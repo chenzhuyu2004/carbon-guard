@@ -10,8 +10,8 @@ else
   DURATION=$((END - START))
 fi
 
-./carbon-guard run --duration $DURATION --json > report.json
+./carbon-guard run --duration "$DURATION" --json > report.json
 
-EMISSIONS=$(cat report.json | sed -n 's/.*"emissions_kg":[ ]*\([0-9.]*\).*/\1/p')
+EMISSIONS=$(grep -o '"emissions_kg":[ ]*[0-9.]*' report.json | grep -o '[0-9.]*')
 
-echo "emissions_kg=$EMISSIONS" >> $GITHUB_OUTPUT
+echo "emissions_kg=$EMISSIONS" >> "$GITHUB_OUTPUT"
