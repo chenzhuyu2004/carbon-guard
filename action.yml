@@ -4,40 +4,13 @@ author: "chenzhuyu2004"
 
 inputs:
   duration:
-    description: "Duration in seconds (optional). If not set, runtime will be auto-detected."
+    description: "Duration in seconds (optional)"
     required: false
-    default: ""
 
 outputs:
   emissions_kg:
     description: "Estimated emissions in kg CO2"
 
 runs:
-  using: "composite"
-  steps:
-    - name: Build carbon-guard
-      shell: bash
-      run: |
-        go build -o carbon-guard
-
-    - name: Determine duration
-      id: duration
-      shell: bash
-      run: |
-        if [ -n "${{ inputs.duration }}" ]; then
-          DURATION="${{ inputs.duration }}"
-        else
-          START=$(date +%s)
-          sleep 1
-          END=$(date +%s)
-          DURATION=$((END - START))
-        fi
-        echo "duration=$DURATION" >> $GITHUB_OUTPUT
-
-    - name: Run carbon emission calculation
-      id: run
-      shell: bash
-      run: |
-        ./carbon-guard run --duration ${{ steps.duration.outputs.duration }} --json > report.json
-        EMISSIONS=$(jq -r '.emissions_kg' report.json)
-        echo "emissions_kg=$EMISSIONS" >> $GITHUB_OUTPUT
+  using: "docker"
+  image: "Dockerfile"
