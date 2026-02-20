@@ -19,20 +19,27 @@ func TestEstimateEmissionsAdvanced(t *testing.T) {
 	tolerance := 1e-9
 
 	duration := 300
-	load := 0.6
-	expected := float64(duration) * 220 * load / 1000.0 / 3600.0 * 0.4
-	got := EstimateEmissionsAdvanced(duration, "ubuntu", "global", load)
-	if math.Abs(got-expected) > tolerance {
-		t.Fatalf("EstimateEmissionsAdvanced(%d, ubuntu, global, %v) = %v, expected %v", duration, load, got, expected)
+	idleExpected := float64(duration) * 110 / 1000.0 / 3600.0 * 0.4
+	idleGot := EstimateEmissionsAdvanced(duration, "ubuntu", "global", 0)
+	if math.Abs(idleGot-idleExpected) > tolerance {
+		t.Fatalf("load=0 (idle) = %v, expected %v", idleGot, idleExpected)
 	}
 
-	fallbackRunnerExpected := float64(duration) * 220 * 0.5 / 1000.0 / 3600.0 * 0.38
+	peakExpected := float64(duration) * 220 / 1000.0 / 3600.0 * 0.4
+	peakGot := EstimateEmissionsAdvanced(duration, "ubuntu", "global", 1)
+	if math.Abs(peakGot-peakExpected) > tolerance {
+		t.Fatalf("load=1 (peak) = %v, expected %v", peakGot, peakExpected)
+	}
+
+	fallbackRunnerPower := 110 + (220-110)*0.5
+	fallbackRunnerExpected := float64(duration) * fallbackRunnerPower / 1000.0 / 3600.0 * 0.38
 	fallbackRunnerGot := EstimateEmissionsAdvanced(duration, "unknown-runner", "us", 0.5)
 	if math.Abs(fallbackRunnerGot-fallbackRunnerExpected) > tolerance {
 		t.Fatalf("unknown runner fallback = %v, expected %v", fallbackRunnerGot, fallbackRunnerExpected)
 	}
 
-	fallbackRegionExpected := float64(duration) * 300 * 0.5 / 1000.0 / 3600.0 * 0.4
+	fallbackRegionPower := 150 + (300-150)*0.5
+	fallbackRegionExpected := float64(duration) * fallbackRegionPower / 1000.0 / 3600.0 * 0.4
 	fallbackRegionGot := EstimateEmissionsAdvanced(duration, "windows", "unknown-region", 0.5)
 	if math.Abs(fallbackRegionGot-fallbackRegionExpected) > tolerance {
 		t.Fatalf("unknown region fallback = %v, expected %v", fallbackRegionGot, fallbackRegionExpected)

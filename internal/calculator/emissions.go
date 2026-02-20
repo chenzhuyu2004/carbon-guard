@@ -2,10 +2,15 @@ package calculator
 
 import "github.com/czy/carbon-guard/pkg"
 
-var runnerPower = map[string]float64{
-	"ubuntu":  220,
-	"windows": 300,
-	"macos":   200,
+type PowerProfile struct {
+	Idle float64
+	Peak float64
+}
+
+var runnerProfiles = map[string]PowerProfile{
+	"ubuntu":  {Idle: 110, Peak: 220},
+	"windows": {Idle: 150, Peak: 300},
+	"macos":   {Idle: 100, Peak: 200},
 }
 
 var regionCarbonIntensity = map[string]float64{
@@ -20,9 +25,9 @@ func EstimateEmissionsKg(durationSeconds int) float64 {
 }
 
 func EstimateEmissionsAdvanced(duration int, runner string, region string, load float64) float64 {
-	power, ok := runnerPower[runner]
+	profile, ok := runnerProfiles[runner]
 	if !ok {
-		power = runnerPower["ubuntu"]
+		profile = runnerProfiles["ubuntu"]
 	}
 
 	ci, ok := regionCarbonIntensity[region]
@@ -30,6 +35,7 @@ func EstimateEmissionsAdvanced(duration int, runner string, region string, load 
 		ci = regionCarbonIntensity["global"]
 	}
 
-	energyKWh := float64(duration) * power * load / 1000.0 / 3600.0
+	power := profile.Idle + (profile.Peak-profile.Idle)*load
+	energyKWh := float64(duration) * power / 1000.0 / 3600.0
 	return energyKWh * ci
 }
