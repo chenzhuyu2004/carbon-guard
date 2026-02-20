@@ -31,6 +31,7 @@ func run(args []string) {
 	runner := fs.String("runner", "ubuntu", "runner type (ubuntu/windows/macos)")
 	region := fs.String("region", "global", "region carbon intensity")
 	load := fs.Float64("load", 0.6, "CPU load factor (0-1)")
+	pue := fs.Float64("pue", 1.2, "data center PUE (>=1.0)")
 	asJSON := fs.Bool("json", false, "output JSON")
 
 	if err := fs.Parse(args); err != nil {
@@ -47,7 +48,12 @@ func run(args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Print(report.Build(*duration, *asJSON, *runner, *region, *load))
+	if *pue < 1.0 {
+		fmt.Fprintln(os.Stderr, "pue must be >= 1.0")
+		os.Exit(1)
+	}
+
+	fmt.Print(report.Build(*duration, *asJSON, *runner, *region, *load, *pue))
 }
 
 func printUsage() {

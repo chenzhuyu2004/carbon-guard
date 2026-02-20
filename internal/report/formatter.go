@@ -9,8 +9,8 @@ import (
 
 const divider = "-----------------------------------"
 
-func Build(durationSeconds int, asJSON bool, runner string, region string, load float64) string {
-	emissions := round4(calculator.EstimateEmissionsAdvanced(durationSeconds, runner, region, load))
+func Build(durationSeconds int, asJSON bool, runner string, region string, load float64, pue float64) string {
+	emissions := round4(calculator.EstimateEmissionsAdvanced(durationSeconds, runner, region, load, pue))
 
 	if asJSON {
 		return fmt.Sprintf("{\n  \"duration_seconds\": %d,\n  \"emissions_kg\": %.4f\n}\n", durationSeconds, emissions)

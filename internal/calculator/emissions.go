@@ -24,7 +24,7 @@ func EstimateEmissionsKg(durationSeconds int) float64 {
 	return float64(durationSeconds) * pkg.PowerWatts * pkg.EmissionsFactorKgPerKWh / pkg.WattsPerKilowatt / pkg.SecondsPerHour
 }
 
-func EstimateEmissionsAdvanced(duration int, runner string, region string, load float64) float64 {
+func EstimateEmissionsAdvanced(duration int, runner string, region string, load float64, pue float64) float64 {
 	profile, ok := runnerProfiles[runner]
 	if !ok {
 		profile = runnerProfiles["ubuntu"]
@@ -37,5 +37,6 @@ func EstimateEmissionsAdvanced(duration int, runner string, region string, load 
 
 	power := profile.Idle + (profile.Peak-profile.Idle)*load
 	energyKWh := float64(duration) * power / 1000.0 / 3600.0
-	return energyKWh * ci
+	energyTotal := energyKWh * pue
+	return energyTotal * ci
 }
