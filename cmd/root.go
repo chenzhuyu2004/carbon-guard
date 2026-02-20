@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/czy/carbon-guard/internal/calculator"
+	"github.com/czy/carbon-guard/internal/ci"
 	"github.com/czy/carbon-guard/internal/report"
 )
 
@@ -36,6 +37,7 @@ func run(args []string) {
 	load := fs.Float64("load", 0.6, "CPU load factor (0-1)")
 	pue := fs.Float64("pue", 1.2, "data center PUE (>=1.0)")
 	segmentsStr := fs.String("segments", "", "dynamic CI segments (duration:ci,...)")
+	liveZone := fs.String("live-ci", "", "fetch live carbon intensity for zone")
 	asJSON := fs.Bool("json", false, "output JSON")
 
 	if err := fs.Parse(args); err != nil {
@@ -57,16 +59,20 @@ func run(args []string) {
 		os.Exit(1)
 	}
 
-	emissions := 0.0
-	if *segmentsStr != "" {
-		segments, err := parseSegments(*segmentsStr)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+	var provider ci.Provider
+	if *liveZone != "" {
+		apiKey := os.Getenv("ELECTRICITY_MAPS_API_KEY")
+		if apiKey == "" {
+			fmt.Fprintln(os.Stderr, "missing ELECTRICITY_MAPS_API_KEY")
 			os.Exit(1)
 		}
-		emissions = calculator.EstimateEmissionsWithSegments(segments, *runner, *load, *pue)
-	} else {
-		emissions = calculator.EstimateEmissionsAdvanced(*duration, *runner, *region, *load, *pue)
+		provider = &ci.ElectricityMapsProvider{APIKey: apiKey}
+	}
+
+	emissions, err := calculateEmissions(*duration, *runner, *region, *load, *pue, *segmentsStr, *liveZone, provider)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	fmt.Print(report.BuildFromEmissions(*duration, *asJSON, emissions))
@@ -74,6 +80,39 @@ func run(args []string) {
 
 func printUsage() {
 	fmt.Fprintln(os.Stderr, "usage: carbon-guard run --duration <seconds> [--json]")
+}
+
+func calculateEmissions(
+	duration int,
+	runner string,
+	region string,
+	load float64,
+	pue float64,
+	segmentsStr string,
+	liveZone string,
+	provider ci.Provider,
+) (float64, error) {
+	if segmentsStr != "" {
+		segments, err := parseSegments(segmentsStr)
+		if err != nil {
+			return 0, err
+		}
+		return calculator.EstimateEmissionsWithSegments(segments, runner, load, pue), nil
+	}
+
+	if liveZone != "" {
+		if provider == nil {
+			return 0, fmt.Errorf("live ci provider is not configured")
+		}
+		ciValue, err := provider.GetCurrentCI(liveZone)
+		if err != nil {
+			return 0, err
+		}
+		segments := []calculator.Segment{{Duration: duration, CI: ciValue}}
+		return calculator.EstimateEmissionsWithSegments(segments, runner, load, pue), nil
+	}
+
+	return calculator.EstimateEmissionsAdvanced(duration, runner, region, load, pue), nil
 }
 
 func parseSegments(raw string) ([]calculator.Segment, error) {
