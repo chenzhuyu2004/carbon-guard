@@ -9,9 +9,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
           go-version: 1.22.x
+
       - run: go mod tidy
       - run: go test ./...
-      - run: go build
+      - run: go build -o carbon-guard
+
+      - name: Run carbon emission calculation
+        run: ./carbon-guard run --duration 300 --json > report.json
+
+      - name: Upload emission report
+        uses: actions/upload-artifact@v4
+        with:
+          name: carbon-report
+          path: report.json
