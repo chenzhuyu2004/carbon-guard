@@ -28,6 +28,9 @@ func run(args []string) {
 	fs.SetOutput(os.Stderr)
 
 	duration := fs.Int("duration", 0, "duration in seconds")
+	runner := fs.String("runner", "ubuntu", "runner type (ubuntu/windows/macos)")
+	region := fs.String("region", "global", "region carbon intensity")
+	load := fs.Float64("load", 0.6, "CPU load factor (0-1)")
 	asJSON := fs.Bool("json", false, "output JSON")
 
 	if err := fs.Parse(args); err != nil {
@@ -39,7 +42,12 @@ func run(args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Print(report.Build(*duration, *asJSON))
+	if *load < 0 || *load > 1 {
+		fmt.Fprintln(os.Stderr, "load must be between 0 and 1")
+		os.Exit(1)
+	}
+
+	fmt.Print(report.Build(*duration, *asJSON, *runner, *region, *load))
 }
 
 func printUsage() {
