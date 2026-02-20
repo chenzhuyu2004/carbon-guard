@@ -5,19 +5,30 @@ import (
 	"testing"
 
 	"github.com/czy/carbon-guard/internal/calculator"
+	"github.com/czy/carbon-guard/internal/ci"
 )
 
 type fakeCIProvider struct {
-	value    float64
-	err      error
-	calls    int
-	lastZone string
+	value         float64
+	err           error
+	calls         int
+	lastZone      string
+	forecast      []ci.ForecastPoint
+	forecastErr   error
+	forecastHours int
 }
 
 func (f *fakeCIProvider) GetCurrentCI(zone string) (float64, error) {
 	f.calls++
 	f.lastZone = zone
 	return f.value, f.err
+}
+
+func (f *fakeCIProvider) GetForecastCI(zone string, hours int) ([]ci.ForecastPoint, error) {
+	f.calls++
+	f.lastZone = zone
+	f.forecastHours = hours
+	return f.forecast, f.forecastErr
 }
 
 func TestCalculateEmissionsUsesLiveCIProvider(t *testing.T) {

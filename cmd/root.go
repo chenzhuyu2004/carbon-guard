@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/czy/carbon-guard/internal/calculator"
 	"github.com/czy/carbon-guard/internal/ci"
@@ -21,6 +22,8 @@ func Execute() {
 	switch os.Args[1] {
 	case "run":
 		run(os.Args[2:])
+	case "suggest":
+		suggest(os.Args[2:])
 	default:
 		printUsage()
 		os.Exit(1)
@@ -79,7 +82,53 @@ func run(args []string) {
 }
 
 func printUsage() {
-	fmt.Fprintln(os.Stderr, "usage: carbon-guard run --duration <seconds> [--json]")
+	fmt.Fprintln(os.Stderr, "usage: carbon-guard <run|suggest> [flags]")
+}
+
+func suggest(args []string) {
+	fs := flag.NewFlagSet("suggest", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+
+	zone := fs.String("zone", "", "electricity maps zone")
+	duration := fs.Int("duration", 0, "duration in seconds")
+	threshold := fs.Float64("threshold", 0.35, "current CI threshold in kgCO2/kWh")
+	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	if *zone == "" {
+		fmt.Fprintln(os.Stderr, "zone is required")
+		os.Exit(1)
+	}
+	if *duration <= 0 {
+		fmt.Fprintln(os.Stderr, "duration must be > 0")
+		os.Exit(1)
+	}
+	if *threshold <= 0 {
+		fmt.Fprintln(os.Stderr, "threshold must be > 0")
+		os.Exit(1)
+	}
+	if *lookahead <= 0 {
+		fmt.Fprintln(os.Stderr, "lookahead must be > 0")
+		os.Exit(1)
+	}
+
+	apiKey := os.Getenv("ELECTRICITY_MAPS_API_KEY")
+	if apiKey == "" {
+		fmt.Fprintln(os.Stderr, "missing ELECTRICITY_MAPS_API_KEY")
+		os.Exit(1)
+	}
+
+	provider := &ci.ElectricityMapsProvider{APIKey: apiKey}
+	out, err := buildSuggestion(*zone, *duration, *threshold, *lookahead, provider)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	fmt.Print(out)
 }
 
 func calculateEmissions(
@@ -143,4 +192,89 @@ func parseSegments(raw string) ([]calculator.Segment, error) {
 	}
 
 	return segments, nil
+}
+
+func buildSuggestion(zone string, duration int, threshold float64, lookahead int, provider ci.Provider) (string, error) {
+	currentCI, err := provider.GetCurrentCI(zone)
+	if err != nil {
+		return "", err
+	}
+
+	forecast, err := provider.GetForecastCI(zone, lookahead)
+	if err != nil {
+		return "", err
+	}
+	if len(forecast) == 0 {
+		return "", fmt.Errorf("no forecast points found for zone %s", zone)
+	}
+
+	currentEmission, ok := estimateWindowEmissions(forecast, duration)
+	if !ok {
+		return "", fmt.Errorf("insufficient forecast coverage for duration %d", duration)
+	}
+
+	bestEmission := currentEmission
+	bestStart := forecast[0].Timestamp
+
+	for i := 1; i < len(forecast); i++ {
+		emission, ok := estimateWindowEmissions(forecast[i:], duration)
+		if !ok {
+			break
+		}
+
+		if emission < bestEmission {
+			bestEmission = emission
+			bestStart = forecast[i].Timestamp
+		}
+	}
+
+	// If current CI is already below threshold and close to best, prefer immediate execution.
+	if currentCI <= threshold && currentEmission <= bestEmission*1.05 {
+		bestEmission = currentEmission
+		bestStart = forecast[0].Timestamp
+	}
+
+	bestEnd := bestStart.Add(time.Duration(duration) * time.Second)
+	reduction := 0.0
+	if currentEmission > 0 {
+		reduction = (currentEmission - bestEmission) / currentEmission * 100
+	}
+
+	return fmt.Sprintf(
+		"Current CI: %.4f kg/kWh\nBest execution window: %s - %s\nExpected emission: %.4f kg\nEmission reduction vs now: %.2f %%\n",
+		currentCI,
+		bestStart.Local().Format("15:04"),
+		bestEnd.Local().Format("15:04"),
+		bestEmission,
+		reduction,
+	), nil
+}
+
+func estimateWindowEmissions(points []ci.ForecastPoint, duration int) (float64, bool) {
+	remaining := duration
+	segments := make([]calculator.Segment, 0)
+
+	for _, point := range points {
+		if remaining <= 0 {
+			break
+		}
+
+		segmentDuration := 3600
+		if remaining < segmentDuration {
+			segmentDuration = remaining
+		}
+
+		segments = append(segments, calculator.Segment{
+			Duration: segmentDuration,
+			CI:       point.CI,
+		})
+		remaining -= segmentDuration
+	}
+
+	if remaining > 0 {
+		return 0, false
+	}
+
+	emission := calculator.EstimateEmissionsWithSegments(segments, "ubuntu", 0.6, 1.2)
+	return emission, true
 }
