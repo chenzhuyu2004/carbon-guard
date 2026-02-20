@@ -21,6 +21,7 @@ jobs:
       - run: go mod tidy
       - run: go test ./...
       - run: go build -o carbon-guard
+      - run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Calculate runtime and emissions
         run: |
