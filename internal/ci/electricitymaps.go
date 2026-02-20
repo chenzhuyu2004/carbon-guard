@@ -39,7 +39,8 @@ func (p *ElectricityMapsProvider) GetCurrentCI(zone string) (float64, error) {
 	}
 	req.Header.Set("auth-token", p.APIKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		return 0, fmt.Errorf("call electricity maps api: %w", err)
 	}
