@@ -7,8 +7,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Record start time
+        run: echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
 
       - uses: actions/setup-go@v5
         with:
@@ -18,8 +22,13 @@ jobs:
       - run: go test ./...
       - run: go build -o carbon-guard
 
-      - name: Run carbon emission calculation
-        run: ./carbon-guard run --duration 300 --json > report.json
+      - name: Calculate runtime and emissions
+        run: |
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+          echo "CI runtime: $DURATION seconds"
+          ./carbon-guard run --duration $DURATION --json > report.json
+          cat report.json
 
       - name: Upload emission report
         uses: actions/upload-artifact@v4
