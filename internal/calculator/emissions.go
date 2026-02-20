@@ -7,6 +7,11 @@ type PowerProfile struct {
 	Peak float64
 }
 
+type Segment struct {
+	Duration int
+	CI       float64
+}
+
 var runnerProfiles = map[string]PowerProfile{
 	"ubuntu":  {Idle: 110, Peak: 220},
 	"windows": {Idle: 150, Peak: 300},
@@ -39,4 +44,26 @@ func EstimateEmissionsAdvanced(duration int, runner string, region string, load 
 	energyKWh := float64(duration) * power / 1000.0 / 3600.0
 	energyTotal := energyKWh * pue
 	return energyTotal * ci
+}
+
+func EstimateEmissionsWithSegments(
+	segments []Segment,
+	runner string,
+	load float64,
+	pue float64,
+) float64 {
+	profile, ok := runnerProfiles[runner]
+	if !ok {
+		profile = runnerProfiles["ubuntu"]
+	}
+
+	power := profile.Idle + (profile.Peak-profile.Idle)*load
+
+	total := 0.0
+	for _, segment := range segments {
+		energyKWh := float64(segment.Duration) * power / 1000.0 / 3600.0
+		total += energyKWh * pue * segment.CI
+	}
+
+	return total
 }

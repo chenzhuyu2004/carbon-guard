@@ -61,3 +61,24 @@ func TestEstimateEmissionsAdvanced(t *testing.T) {
 		t.Fatalf("pue scaling mismatch: got %v, expected %v", pueOneTwoGot, pueOneGot*1.2)
 	}
 }
+
+func TestEstimateEmissionsWithSegments(t *testing.T) {
+	tolerance := 1e-9
+
+	segments := []Segment{
+		{Duration: 300, CI: 0.4},
+		{Duration: 300, CI: 0.8},
+	}
+	load := 0.6
+	pue := 1.2
+
+	power := 110 + (220-110)*load
+	partOne := float64(300) * power / 1000.0 / 3600.0 * pue * 0.4
+	partTwo := float64(300) * power / 1000.0 / 3600.0 * pue * 0.8
+	expected := partOne + partTwo
+
+	got := EstimateEmissionsWithSegments(segments, "ubuntu", load, pue)
+	if math.Abs(got-expected) > tolerance {
+		t.Fatalf("EstimateEmissionsWithSegments() = %v, expected %v", got, expected)
+	}
+}

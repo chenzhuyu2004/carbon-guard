@@ -10,7 +10,12 @@ import (
 const divider = "-----------------------------------"
 
 func Build(durationSeconds int, asJSON bool, runner string, region string, load float64, pue float64) string {
-	emissions := round4(calculator.EstimateEmissionsAdvanced(durationSeconds, runner, region, load, pue))
+	emissions := calculator.EstimateEmissionsAdvanced(durationSeconds, runner, region, load, pue)
+	return BuildFromEmissions(durationSeconds, asJSON, emissions)
+}
+
+func BuildFromEmissions(durationSeconds int, asJSON bool, emissions float64) string {
+	emissions = round4(emissions)
 
 	if asJSON {
 		return fmt.Sprintf("{\n  \"duration_seconds\": %d,\n  \"emissions_kg\": %.4f\n}\n", durationSeconds, emissions)

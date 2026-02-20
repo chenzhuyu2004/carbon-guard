@@ -4,7 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
+	"github.com/czy/carbon-guard/internal/calculator"
 	"github.com/czy/carbon-guard/internal/report"
 )
 
@@ -32,6 +35,7 @@ func run(args []string) {
 	region := fs.String("region", "global", "region carbon intensity")
 	load := fs.Float64("load", 0.6, "CPU load factor (0-1)")
 	pue := fs.Float64("pue", 1.2, "data center PUE (>=1.0)")
+	segmentsStr := fs.String("segments", "", "dynamic CI segments (duration:ci,...)")
 	asJSON := fs.Bool("json", false, "output JSON")
 
 	if err := fs.Parse(args); err != nil {
@@ -53,9 +57,51 @@ func run(args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Print(report.Build(*duration, *asJSON, *runner, *region, *load, *pue))
+	emissions := 0.0
+	if *segmentsStr != "" {
+		segments, err := parseSegments(*segmentsStr)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		emissions = calculator.EstimateEmissionsWithSegments(segments, *runner, *load, *pue)
+	} else {
+		emissions = calculator.EstimateEmissionsAdvanced(*duration, *runner, *region, *load, *pue)
+	}
+
+	fmt.Print(report.BuildFromEmissions(*duration, *asJSON, emissions))
 }
 
 func printUsage() {
 	fmt.Fprintln(os.Stderr, "usage: carbon-guard run --duration <seconds> [--json]")
+}
+
+func parseSegments(raw string) ([]calculator.Segment, error) {
+	items := strings.Split(raw, ",")
+	segments := make([]calculator.Segment, 0, len(items))
+
+	for _, item := range items {
+		item = strings.TrimSpace(item)
+		parts := strings.Split(item, ":")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid segment format: %s", item)
+		}
+
+		duration, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+		if err != nil || duration <= 0 {
+			return nil, fmt.Errorf("invalid segment duration: %s", parts[0])
+		}
+
+		ci, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+		if err != nil || ci <= 0 {
+			return nil, fmt.Errorf("invalid segment ci: %s", parts[1])
+		}
+
+		segments = append(segments, calculator.Segment{
+			Duration: duration,
+			CI:       ci,
+		})
+	}
+
+	return segments, nil
 }
