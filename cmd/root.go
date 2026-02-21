@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/czy/carbon-guard/internal/output"
+	"github.com/chenzhuyu2004/carbon-guard/internal/output"
 )
 
 func Execute() {

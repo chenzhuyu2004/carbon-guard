@@ -1,6 +1,6 @@
 package main
 
-import "github.com/czy/carbon-guard/cmd"
+import "github.com/chenzhuyu2004/carbon-guard/cmd"
 
 func main() {
 	cmd.Execute()

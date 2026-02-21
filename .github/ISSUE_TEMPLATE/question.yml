@@ -1,0 +1,18 @@
+name: Question / Help
+description: Ask usage questions in Discussions instead of Issues
+title: "question: "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For usage questions and open discussion, please use GitHub Discussions:
+        https://github.com/chenzhuyu2004/carbon-guard/discussions
+  - type: checkboxes
+    id: confirmed
+    attributes:
+      label: Confirmation
+      options:
+        - label: I will open this in Discussions instead of Issues.
+          required: true

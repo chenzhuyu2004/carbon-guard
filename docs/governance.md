@@ -4,7 +4,7 @@
 
 `main` is protected with:
 
-- Required status checks: `build`, `action-smoke`, `Analyze (go)`
+- Required status checks: `build`, `action-smoke`, `Analyze (go)`, `docs-links`
 - Required conversation resolution: enabled
 - Force push/deletion: disabled
 - Admin enforcement: enabled
@@ -34,3 +34,10 @@ If you add maintainers later, switch to team mode:
 - User-facing behavior changes must update `README.md` and relevant `docs/*` pages.
 - New CLI flags must be documented in `docs/commands.md`.
 - Release-impacting changes must be added to `CHANGELOG.md`.
+
+## Repository Features
+
+- Issues: enabled (with templates)
+- Discussions: enabled
+- Projects: enabled
+- Wiki: disabled (canonical docs live in `docs/`)

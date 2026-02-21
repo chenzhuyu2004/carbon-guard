@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	appsvc "github.com/czy/carbon-guard/internal/app"
-	cgerrors "github.com/czy/carbon-guard/internal/errors"
+	appsvc "github.com/chenzhuyu2004/carbon-guard/internal/app"
+	cgerrors "github.com/chenzhuyu2004/carbon-guard/internal/errors"
 )
 
 func mapAppError(err error) error {

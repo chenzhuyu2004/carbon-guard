@@ -3,7 +3,7 @@ package app
 import (
 	"context"
 
-	"github.com/czy/carbon-guard/internal/domain/scheduling"
+	"github.com/chenzhuyu2004/carbon-guard/internal/domain/scheduling"
 )
 
 type Provider interface {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/czy/carbon-guard/internal/domain/scheduling"
+	"github.com/chenzhuyu2004/carbon-guard/internal/domain/scheduling"
 )
 
 func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, error) {

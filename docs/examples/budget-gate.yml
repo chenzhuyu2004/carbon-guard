@@ -13,7 +13,7 @@ jobs:
         run: echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
 
       - name: Enforce budget
-        uses: czy/carbon-guard@v1
+        uses: chenzhuyu2004/carbon-guard@v1
         with:
           start_time: ${{ env.START_TIME }}
           budget_kg: "0.0150"

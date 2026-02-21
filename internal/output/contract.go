@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	cgerrors "github.com/czy/carbon-guard/internal/errors"
+	cgerrors "github.com/chenzhuyu2004/carbon-guard/internal/errors"
 )
 
 type ErrorResponse struct {

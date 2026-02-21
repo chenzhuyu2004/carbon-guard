@@ -3,9 +3,9 @@ package cmd
 import (
 	"context"
 
-	appsvc "github.com/czy/carbon-guard/internal/app"
-	"github.com/czy/carbon-guard/internal/ci"
-	"github.com/czy/carbon-guard/internal/domain/scheduling"
+	appsvc "github.com/chenzhuyu2004/carbon-guard/internal/app"
+	"github.com/chenzhuyu2004/carbon-guard/internal/ci"
+	"github.com/chenzhuyu2004/carbon-guard/internal/domain/scheduling"
 )
 
 type providerAdapter struct {
