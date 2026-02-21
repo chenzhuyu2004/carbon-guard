@@ -1,4 +1,4 @@
-.PHONY: build test lint docker
+.PHONY: build test lint docker docs-check
 
 build:
 	go build
@@ -11,3 +11,6 @@ lint:
 
 docker:
 	docker build -t carbon-guard-action .
+
+docs-check:
+	./scripts/check-doc-links.sh
