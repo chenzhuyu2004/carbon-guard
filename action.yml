@@ -6,10 +6,31 @@ inputs:
   duration:
     description: "Duration in seconds (optional)"
     required: false
+    default: ""
+  start_time:
+    description: "Unix timestamp (seconds). Used when duration is not provided"
+    required: false
+    default: ""
+  budget_kg:
+    description: "Optional carbon budget in kgCO2"
+    required: false
+    default: ""
+  fail_on_budget:
+    description: "If true, fail the action when emissions exceed budget_kg"
+    required: false
+    default: "false"
+  baseline_kg:
+    description: "Optional baseline emissions in kgCO2 for percentage delta"
+    required: false
+    default: ""
 
 outputs:
   emissions_kg:
     description: "Estimated emissions in kg CO2"
+  budget_exceeded:
+    description: "Whether emissions exceeded budget_kg"
+  delta_vs_baseline_pct:
+    description: "Percentage delta against baseline_kg"
 
 runs:
   using: "docker"

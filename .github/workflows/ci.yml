@@ -4,6 +4,14 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  CARBON_BUDGET_KG: ${{ vars.CARBON_BUDGET_KG }}
+  CARBON_BASELINE_KG: ${{ vars.CARBON_BASELINE_KG }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,18 +29,158 @@ jobs:
       - run: go mod tidy
       - run: go test ./...
       - run: go build -o carbon-guard
-      - run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Calculate runtime and emissions
         run: |
           END_TIME=$(date +%s)
           DURATION=$((END_TIME - START_TIME))
           echo "CI runtime: $DURATION seconds"
-          ./carbon-guard run --duration $DURATION --json > report.json
+
+          ARGS=(--duration "$DURATION" --json)
+          if [ -n "$CARBON_BUDGET_KG" ]; then
+            ARGS+=(--budget-kg "$CARBON_BUDGET_KG")
+          fi
+          if [ -n "$CARBON_BASELINE_KG" ]; then
+            ARGS+=(--baseline-kg "$CARBON_BASELINE_KG")
+          fi
+
+          ./carbon-guard run "${ARGS[@]}" > report.json
           cat report.json
+
+      - name: Publish carbon step summary
+        run: |
+          python3 - <<'PY'
+          import json, os
+          with open("report.json", "r", encoding="utf-8") as f:
+              report = json.load(f)
+
+          emissions = float(report.get("emissions_kg", 0.0))
+          duration = int(report.get("duration_seconds", 0))
+          budget = report.get("budget_kg")
+          baseline = report.get("baseline_kg")
+          delta = report.get("delta_vs_baseline_pct")
+          budget_exceeded = report.get("budget_exceeded", False)
+
+          lines = []
+          lines.append("## Carbon Guard Report")
+          lines.append("")
+          lines.append(f"- Duration: `{duration}s`")
+          lines.append(f"- Emissions: `{emissions:.4f} kgCO2`")
+          if budget is not None:
+              status = "exceeded" if budget_exceeded else "within budget"
+              lines.append(f"- Budget: `{float(budget):.4f} kgCO2` ({status})")
+          if baseline is not None and delta is not None:
+              lines.append(f"- Baseline: `{float(baseline):.4f} kgCO2`")
+              lines.append(f"- Delta vs baseline: `{float(delta):+.2f}%`")
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write("\\n".join(lines) + "\\n")
+          PY
+
+      - name: Enforce carbon budget
+        if: ${{ env.CARBON_BUDGET_KG != '' }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          budget = float(os.environ["CARBON_BUDGET_KG"])
+          with open("report.json", "r", encoding="utf-8") as f:
+              emissions = float(json.load(f)["emissions_kg"])
+          if emissions > budget:
+              print(f"Carbon budget exceeded: {emissions:.4f} kgCO2 > {budget:.4f} kgCO2")
+              sys.exit(1)
+          print(f"Carbon budget check passed: {emissions:.4f} kgCO2 <= {budget:.4f} kgCO2")
+          PY
+
+      - name: Comment carbon report on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('report.json', 'utf8'));
+            const marker = '<!-- carbon-guard-report -->';
+            const emissions = Number(report.emissions_kg || 0);
+            const duration = Number(report.duration_seconds || 0);
+            const budget = report.budget_kg;
+            const budgetExceeded = report.budget_exceeded === true;
+            const baseline = report.baseline_kg;
+            const delta = report.delta_vs_baseline_pct;
+
+            let body = `${marker}
+            ## Carbon Guard Report
+
+            - Duration: \`${duration}s\`
+            - Emissions: \`${emissions.toFixed(4)} kgCO2\``;
+            if (budget !== undefined) {
+              body += `\n- Budget: \`${Number(budget).toFixed(4)} kgCO2\` (${budgetExceeded ? 'exceeded' : 'within budget'})`;
+            }
+            if (baseline !== undefined && delta !== undefined) {
+              body += `\n- Baseline: \`${Number(baseline).toFixed(4)} kgCO2\``;
+              body += `\n- Delta vs baseline: \`${Number(delta).toFixed(2)}%\``;
+            }
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100
+            });
+
+            const existing = comments.find(c => c.user?.type === 'Bot' && c.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body
+              });
+            }
 
       - name: Upload emission report
         uses: actions/upload-artifact@v4
         with:
           name: carbon-report
           path: report.json
+
+  action-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record action start time
+        run: echo "GH_ACTION_START_TIME=$(($(date +%s)-60))" >> $GITHUB_ENV
+
+      - name: Run local Carbon Guard action
+        id: carbon
+        uses: ./
+        with:
+          start_time: ${{ env.GH_ACTION_START_TIME }}
+          budget_kg: "0.1000"
+          baseline_kg: "0.0500"
+          fail_on_budget: "false"
+
+      - name: Validate action output
+        run: |
+          EMISSIONS='${{ steps.carbon.outputs.emissions_kg }}'
+          EXCEEDED='${{ steps.carbon.outputs.budget_exceeded }}'
+          DELTA='${{ steps.carbon.outputs.delta_vs_baseline_pct }}'
+          echo "emissions_kg=$EMISSIONS"
+          echo "budget_exceeded=$EXCEEDED"
+          echo "delta_vs_baseline_pct=$DELTA"
+          test -n "$EMISSIONS"
+          echo "$EMISSIONS" | grep -Eq '^[0-9]+(\.[0-9]+)?$'
+          [ "$EXCEEDED" = "true" ] || [ "$EXCEEDED" = "false" ]
+          test -n "$DELTA"
+          echo "$DELTA" | grep -Eq '^[-]?[0-9]+(\.[0-9]+)?$'

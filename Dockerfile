@@ -3,7 +3,7 @@ FROM golang:1.22-alpine AS builder
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+COPY go.mod ./
 RUN go mod download
 
 COPY . .
@@ -13,6 +13,8 @@ RUN go build -o carbon-guard
 FROM alpine:3.19
 
 WORKDIR /app
+
+RUN apk add --no-cache ca-certificates
 
 COPY --from=builder /app/carbon-guard .
 COPY entrypoint.sh .

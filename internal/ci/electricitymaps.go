@@ -1,24 +1,34 @@
 package ci
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 	"time"
 )
 
-const electricityMapsLatestURL = "https://api.electricitymaps.com/v3/carbon-intensity/latest"
-const electricityMapsForecastURL = "https://api.electricitymaps.com/v3/carbon-intensity/forecast"
+const defaultElectricityMapsLatestURL = "https://api.electricitymaps.com/v3/carbon-intensity/latest"
+const defaultElectricityMapsForecastURL = "https://api.electricitymaps.com/v3/carbon-intensity/forecast"
+
+var electricityMapsHTTPClient = &http.Client{
+	Timeout: 10 * time.Second,
+}
+
+var electricityMapsLatestURL = defaultElectricityMapsLatestURL
+var electricityMapsForecastURL = defaultElectricityMapsForecastURL
 
 type ElectricityMapsProvider struct {
 	APIKey string
 }
 
-func (p *ElectricityMapsProvider) GetCurrentCI(zone string) (float64, error) {
+func (p *ElectricityMapsProvider) GetCurrentCI(ctx context.Context, zone string) (float64, error) {
 	if p.APIKey == "" {
-		return 0, fmt.Errorf("missing electricity maps api key")
+		return 0, fmt.Errorf("missing ELECTRICITY_MAPS_API_KEY: set an Electricity Maps API key to use live carbon data")
 	}
 	if zone == "" {
 		return 0, fmt.Errorf("missing electricity maps zone")
@@ -33,21 +43,20 @@ func (p *ElectricityMapsProvider) GetCurrentCI(zone string) (float64, error) {
 	query.Set("zone", zone)
 	endpoint.RawQuery = query.Encode()
 
-	req, err := http.NewRequest(http.MethodGet, endpoint.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
 	if err != nil {
 		return 0, fmt.Errorf("create electricity maps request: %w", err)
 	}
 	req.Header.Set("auth-token", p.APIKey)
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := electricityMapsHTTPClient.Do(req)
 	if err != nil {
 		return 0, fmt.Errorf("call electricity maps api: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("electricity maps api status: %s", resp.Status)
+		return 0, fmt.Errorf("electricity maps api status: %s (%s)", resp.Status, readErrorBody(resp.Body))
 	}
 
 	var body struct {
@@ -56,13 +65,16 @@ func (p *ElectricityMapsProvider) GetCurrentCI(zone string) (float64, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		return 0, fmt.Errorf("decode electricity maps response: %w", err)
 	}
+	if body.CarbonIntensity <= 0 {
+		return 0, fmt.Errorf("invalid carbonIntensity value: %v", body.CarbonIntensity)
+	}
 
 	return body.CarbonIntensity / 1000.0, nil
 }
 
-func (p *ElectricityMapsProvider) GetForecastCI(zone string, hours int) ([]ForecastPoint, error) {
+func (p *ElectricityMapsProvider) GetForecastCI(ctx context.Context, zone string, hours int) ([]ForecastPoint, error) {
 	if p.APIKey == "" {
-		return nil, fmt.Errorf("missing electricity maps api key")
+		return nil, fmt.Errorf("missing ELECTRICITY_MAPS_API_KEY: set an Electricity Maps API key to use forecast carbon data")
 	}
 	if zone == "" {
 		return nil, fmt.Errorf("missing electricity maps zone")
@@ -80,21 +92,20 @@ func (p *ElectricityMapsProvider) GetForecastCI(zone string, hours int) ([]Forec
 	query.Set("zone", zone)
 	endpoint.RawQuery = query.Encode()
 
-	req, err := http.NewRequest(http.MethodGet, endpoint.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("create electricity maps forecast request: %w", err)
 	}
 	req.Header.Set("auth-token", p.APIKey)
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := electricityMapsHTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("call electricity maps forecast api: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("electricity maps forecast api status: %s", resp.Status)
+		return nil, fmt.Errorf("electricity maps forecast api status: %s (%s)", resp.Status, readErrorBody(resp.Body))
 	}
 
 	var body struct {
@@ -112,6 +123,10 @@ func (p *ElectricityMapsProvider) GetForecastCI(zone string, hours int) ([]Forec
 	points := make([]ForecastPoint, 0, len(body.Forecast))
 
 	for _, item := range body.Forecast {
+		if item.CarbonIntensity <= 0 {
+			return nil, fmt.Errorf("invalid forecast carbonIntensity value: %v", item.CarbonIntensity)
+		}
+
 		timestamp, err := parseForecastTime(item.Datetime)
 		if err != nil {
 			return nil, err
@@ -132,6 +147,19 @@ func (p *ElectricityMapsProvider) GetForecastCI(zone string, hours int) ([]Forec
 	})
 
 	return points, nil
+}
+
+func readErrorBody(body io.Reader) string {
+	data, err := io.ReadAll(io.LimitReader(body, 4096))
+	if err != nil {
+		return "unable to read response body"
+	}
+
+	text := strings.TrimSpace(string(data))
+	if text == "" {
+		return "empty response body"
+	}
+	return text
 }
 
 func parseForecastTime(value string) (time.Time, error) {
