@@ -1,29 +1,119 @@
 package report
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 
-	"github.com/czy/carbon-guard/internal/calculator"
+	"github.com/czy/carbon-guard/pkg"
 )
 
 const divider = "-----------------------------------"
 
-func Build(durationSeconds int, asJSON bool, runner string, region string, load float64, pue float64) string {
-	emissions := calculator.EstimateEmissionsAdvanced(durationSeconds, runner, region, load, pue)
-	return BuildFromEmissions(durationSeconds, asJSON, emissions)
+type BuildOptions struct {
+	BudgetKg   float64
+	BaselineKg float64
 }
 
-func BuildFromEmissions(durationSeconds int, asJSON bool, emissions float64) string {
+func BuildFromEmissions(durationSeconds int, asJSON bool, emissions float64, opts BuildOptions) string {
 	emissions = round4(emissions)
+	budgetKg := round4(opts.BudgetKg)
+	baselineKg := round4(opts.BaselineKg)
+	budgetExceeded := budgetKg > 0 && emissions > budgetKg
 
 	if asJSON {
-		return fmt.Sprintf("{\n  \"duration_seconds\": %d,\n  \"emissions_kg\": %.4f\n}\n", durationSeconds, emissions)
+		payload := map[string]any{
+			"duration_seconds": durationSeconds,
+			"emissions_kg":     emissions,
+		}
+		if budgetKg > 0 {
+			payload["budget_kg"] = budgetKg
+			payload["budget_exceeded"] = budgetExceeded
+		}
+		if baselineKg > 0 {
+			payload["baseline_kg"] = baselineKg
+			payload["delta_vs_baseline_pct"] = round2(deltaVsBaselinePct(emissions, baselineKg))
+		}
+
+		data, err := json.MarshalIndent(payload, "", "  ")
+		if err != nil {
+			return fmt.Sprintf("{\n  \"duration_seconds\": %d,\n  \"emissions_kg\": %.4f\n}\n", durationSeconds, emissions)
+		}
+		return string(data) + "\n"
 	}
 
-	return fmt.Sprintf("%s\nCarbon Report\n%s\nDuration: %ds\nEstimated Emissions: %.4f kgCO2\n%s\n", divider, divider, durationSeconds, emissions, divider)
+	smartphoneCharges, evKilometers := buildComparisons(emissions)
+	score, emoji := carbonScore(emissions, durationSeconds)
+	report := fmt.Sprintf(
+		"%s\nCarbon Report\n%s\nDuration: %ds\nEstimated Emissions: %.4f kgCO2\nCarbon Score: %s %s\nFun Facts:\n- Equivalent to charging %.2f smartphones\n- Equivalent to driving %.2f km in an EV\n",
+		divider,
+		divider,
+		durationSeconds,
+		emissions,
+		score,
+		emoji,
+		smartphoneCharges,
+		evKilometers,
+	)
+
+	if budgetKg > 0 {
+		status := "within budget"
+		if budgetExceeded {
+			status = "budget exceeded"
+		}
+		report += fmt.Sprintf("Budget: %.4f kgCO2 (%s)\n", budgetKg, status)
+	}
+	if baselineKg > 0 {
+		report += fmt.Sprintf("Baseline: %.4f kgCO2 (delta: %.2f%%)\n", baselineKg, deltaVsBaselinePct(emissions, baselineKg))
+	}
+
+	return report + divider + "\n"
 }
 
 func round4(v float64) float64 {
 	return math.Round(v*10000) / 10000
+}
+
+func round2(v float64) float64 {
+	return math.Round(v*100) / 100
+}
+
+func buildComparisons(emissionsKg float64) (float64, float64) {
+	if emissionsKg <= 0 {
+		return 0, 0
+	}
+
+	energyKWh := emissionsKg / pkg.EmissionsFactorKgPerKWh
+	smartphoneCharges := energyKWh / pkg.SmartphoneChargeKWh
+	evKilometers := energyKWh / pkg.EVKilometerKWh
+
+	return smartphoneCharges, evKilometers
+}
+
+func carbonScore(emissionsKg float64, durationSeconds int) (string, string) {
+	if durationSeconds <= 0 {
+		return "C", "🏭"
+	}
+
+	energyKWh := float64(durationSeconds) * pkg.PowerWatts / pkg.WattsPerKilowatt / pkg.SecondsPerHour
+	if energyKWh <= 0 {
+		return "C", "🏭"
+	}
+
+	ciGPerKWh := (emissionsKg / energyKWh) * 1000
+	switch {
+	case ciGPerKWh < pkg.CIScoreGreenMaxGPerKWh:
+		return "A", "🌿"
+	case ciGPerKWh < pkg.CIScoreYellowMaxGPerKWh:
+		return "B", "⚠️"
+	default:
+		return "C", "🏭"
+	}
+}
+
+func deltaVsBaselinePct(emissionsKg float64, baselineKg float64) float64 {
+	if baselineKg <= 0 {
+		return 0
+	}
+	return (emissionsKg - baselineKg) / baselineKg * 100
 }

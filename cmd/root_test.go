@@ -1,11 +1,16 @@
 package cmd
 
 import (
+	"context"
 	"math"
+	"reflect"
 	"testing"
+	"time"
 
+	appsvc "github.com/czy/carbon-guard/internal/app"
 	"github.com/czy/carbon-guard/internal/calculator"
 	"github.com/czy/carbon-guard/internal/ci"
+	cgerrors "github.com/czy/carbon-guard/internal/errors"
 )
 
 type fakeCIProvider struct {
@@ -18,13 +23,13 @@ type fakeCIProvider struct {
 	forecastHours int
 }
 
-func (f *fakeCIProvider) GetCurrentCI(zone string) (float64, error) {
+func (f *fakeCIProvider) GetCurrentCI(_ context.Context, zone string) (float64, error) {
 	f.calls++
 	f.lastZone = zone
 	return f.value, f.err
 }
 
-func (f *fakeCIProvider) GetForecastCI(zone string, hours int) ([]ci.ForecastPoint, error) {
+func (f *fakeCIProvider) GetForecastCI(_ context.Context, zone string, hours int) ([]ci.ForecastPoint, error) {
 	f.calls++
 	f.lastZone = zone
 	f.forecastHours = hours
@@ -33,10 +38,18 @@ func (f *fakeCIProvider) GetForecastCI(zone string, hours int) ([]ci.ForecastPoi
 
 func TestCalculateEmissionsUsesLiveCIProvider(t *testing.T) {
 	provider := &fakeCIProvider{value: 0.8}
+	service := appsvc.New(newProviderAdapter(provider))
 
-	got, err := calculateEmissions(300, "ubuntu", "eu", 0.6, 1.2, "", "DE", provider)
+	got, err := service.Run(context.Background(), appsvc.RunInput{
+		Duration: 300,
+		Runner:   "ubuntu",
+		Region:   "eu",
+		Load:     0.6,
+		PUE:      1.2,
+		LiveZone: "DE",
+	})
 	if err != nil {
-		t.Fatalf("calculateEmissions() unexpected error: %v", err)
+		t.Fatalf("Run() unexpected error: %v", err)
 	}
 
 	expected := calculator.EstimateEmissionsWithSegments(
@@ -45,8 +58,8 @@ func TestCalculateEmissionsUsesLiveCIProvider(t *testing.T) {
 		0.6,
 		1.2,
 	)
-	if math.Abs(got-expected) > 1e-9 {
-		t.Fatalf("calculateEmissions() = %v, expected %v", got, expected)
+	if math.Abs(got.EmissionsKg-expected) > 1e-9 {
+		t.Fatalf("Run().EmissionsKg = %v, expected %v", got.EmissionsKg, expected)
 	}
 
 	if provider.calls != 1 {
@@ -54,5 +67,54 @@ func TestCalculateEmissionsUsesLiveCIProvider(t *testing.T) {
 	}
 	if provider.lastZone != "DE" {
 		t.Fatalf("provider zone = %q, expected %q", provider.lastZone, "DE")
+	}
+}
+
+func TestSplitZonesNormalizesAndDropsEmpty(t *testing.T) {
+	got := splitZones(" de, FR , ,pl ")
+	want := []string{"DE", "FR", "PL"}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("splitZones() = %#v, expected %#v", got, want)
+	}
+}
+
+func TestAnalyzeBestWindowDurationExceedsLookahead(t *testing.T) {
+	provider := &fakeCIProvider{}
+	service := appsvc.New(newProviderAdapter(provider))
+	_, err := service.AnalyzeBestWindow(context.Background(), "DE", 7201, 2)
+	if err == nil {
+		t.Fatalf("expected error when duration exceeds lookahead")
+	}
+}
+
+func TestAnalyzeBestWindowCoverageError(t *testing.T) {
+	now := time.Now().UTC()
+	provider := &fakeCIProvider{
+		value: 0.4,
+		forecast: []ci.ForecastPoint{
+			{Timestamp: now, CI: 0.4},
+		},
+	}
+
+	service := appsvc.New(newProviderAdapter(provider))
+	_, err := service.AnalyzeBestWindow(context.Background(), "DE", 7200, 3)
+	if err == nil {
+		t.Fatalf("expected coverage error")
+	}
+}
+
+func TestRunBudgetExceededReturnsDedicatedCode(t *testing.T) {
+	err := run([]string{
+		"--duration", "300",
+		"--budget-kg", "0.001",
+		"--fail-on-budget",
+	})
+	if err == nil {
+		t.Fatalf("expected budget exceeded error")
+	}
+
+	if code := cgerrors.GetCode(err); code != cgerrors.BudgetExceeded {
+		t.Fatalf("error code = %d, expected %d", code, cgerrors.BudgetExceeded)
 	}
 }
