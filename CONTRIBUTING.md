@@ -14,29 +14,31 @@ make lint
 make build
 ```
 
-## Coding Rules
+## Architecture Rules
 
-- Keep zero third-party runtime dependencies unless absolutely necessary.
-- Follow the current architecture boundaries:
-  - `cmd` for CLI parsing and presentation only
-  - `internal/app` for use-case orchestration
-  - `internal/domain` for pure scheduling logic
-  - `internal/ci` for provider adapters and cache implementation
-- Keep behavior changes covered by tests.
+- Keep runtime dependencies zero unless absolutely necessary.
+- Respect layer boundaries:
+  - `cmd`: flag parsing + presentation only
+  - `internal/app`: use-case orchestration
+  - `internal/domain`: pure scheduling logic
+  - `internal/ci`: providers/cache/infrastructure
+
+## Documentation Rules
+
+- Update `docs/commands.md` when adding/changing flags.
+- Update `docs/action.md` when changing action inputs/outputs.
+- Update `README.md` for user-visible behavior changes.
+- Add release notes in `CHANGELOG.md`.
 
 ## Pull Request Checklist
 
-- [ ] Tests added/updated
+- [ ] Tests added/updated where applicable
 - [ ] `go test ./...` passes
 - [ ] `go vet ./...` passes
 - [ ] `gofmt` applied
-- [ ] README/docs updated for user-visible changes
-- [ ] Changelog updated (`CHANGELOG.md`)
+- [ ] Docs updated
+- [ ] Changelog updated
 
-## Commit Guidance
+## Governance Notes
 
-Prefer small, themed commits:
-
-1. Feature or refactor
-2. Tests
-3. Docs
+Branch/review policy is documented in [`docs/governance.md`](docs/governance.md).
