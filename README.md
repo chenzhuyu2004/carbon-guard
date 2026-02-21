@@ -2,19 +2,31 @@
 
 **The CLI that guilt-trips your CI pipeline into sustainability.**
 
-![Go Report Card](https://img.shields.io/badge/go%20report-A%2B-brightgreen)
-![License](https://img.shields.io/badge/license-MIT-blue)
-![Carbon Savings](https://img.shields.io/badge/carbon%20savings-track%20it-success)
+![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?logo=go&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue)
+![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)
+![CodeQL](https://img.shields.io/badge/Security-CodeQL-black)
 
-Carbon Guard turns CI runtime into a measurable carbon signal.
-Use it as a local CLI or as a Docker-based GitHub Action.
+Carbon Guard helps engineering teams make CI emissions visible, enforce carbon budgets, and schedule workloads in greener windows.
 
-## Why Carbon Guard
+## Quick Navigation
 
-- Carbon visibility: estimate CI emissions in `kgCO2`.
-- Carbon control: enforce budget gates in CI.
-- Carbon optimization: suggest greener windows and zones.
-- Engineering quality: zero-dependency Go + clean architecture.
+| I want to... | Go here |
+| --- | --- |
+| Start in 1 minute | [Quick Start](#quick-start) |
+| Use it in GitHub Actions | [`docs/action.md`](docs/action.md) |
+| See all CLI flags & outputs | [`docs/commands.md`](docs/commands.md) |
+| Understand architecture | [`docs/architecture.md`](docs/architecture.md) |
+| Configure cache/env/thresholds | [`docs/configuration.md`](docs/configuration.md) |
+| Understand governance/review policy | [`docs/governance.md`](docs/governance.md) |
+
+## What You Get
+
+- `run`: runtime carbon report (`kgCO2`) with budget and baseline support.
+- `suggest` / `run-aware`: carbon-aware scheduling for a single zone.
+- `optimize` / `optimize-global`: multi-zone optimization over forecast windows.
+- Local CLI and Docker-based GitHub Action with a stable output contract.
+- Zero runtime dependencies (Go standard library only).
 
 ## Quick Start
 
@@ -41,43 +53,57 @@ carbon-guard run --duration 300 --json
   run: echo "emissions_kg=${{ steps.carbon.outputs.emissions_kg }}"
 ```
 
-## Commands (Overview)
+## Example Output
 
-| Command | Purpose |
-| --- | --- |
-| `run` | Estimate emissions for one runtime (with optional budget/baseline). |
-| `suggest` | Recommend a lower-carbon execution window for one zone. |
-| `run-aware` | Wait until greener conditions or threshold target is met. |
-| `optimize` | Compare multiple zones and rank by expected emission. |
-| `optimize-global` | Global optimization over shared time axis + zone. |
+```text
+-----------------------------------
+Carbon Report
+-----------------------------------
+Duration: 300s
+Estimated Emissions: 0.0067 kgCO2
+Score: A 🌿
+Equivalent to charging 1 smartphones
+Equivalent to driving an EV 0.1 km
+-----------------------------------
+```
 
-Full CLI reference: [`docs/commands.md`](docs/commands.md)
-
-## Architecture
+## Architecture Snapshot
 
 ```mermaid
 flowchart LR
-  CLI[cmd] --> APP[internal/app]
+  CMD[cmd] --> APP[internal/app]
   APP --> DOMAIN[internal/domain/scheduling]
   APP --> INFRA[internal/ci]
+  APP --> CALC[internal/calculator]
 ```
 
-Detailed notes: [`docs/architecture.md`](docs/architecture.md)
+## Repository Layout
+
+```text
+cmd/                 CLI parsing and presentation
+internal/app/        use-case orchestration
+internal/domain/     pure scheduling logic
+internal/ci/         Electricity Maps providers + cache
+docs/                user and maintainer documentation
+.github/workflows/   CI and security automation
+```
 
 ## Documentation
 
-Start here: [`docs/index.md`](docs/index.md)
+Start with [`docs/index.md`](docs/index.md).
 
-- Action guide: [`docs/action.md`](docs/action.md)
-- Command reference: [`docs/commands.md`](docs/commands.md)
+- Action Guide: [`docs/action.md`](docs/action.md)
+- Commands: [`docs/commands.md`](docs/commands.md)
+- Configuration: [`docs/configuration.md`](docs/configuration.md)
 - Troubleshooting: [`docs/troubleshooting.md`](docs/troubleshooting.md)
 - FAQ: [`docs/faq.md`](docs/faq.md)
-- Release process: [`docs/release.md`](docs/release.md)
+- Governance: [`docs/governance.md`](docs/governance.md)
+- Release Process: [`docs/release.md`](docs/release.md)
 
-## Governance
+## Community & Governance
 
 - Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md)
-- Code of Conduct: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 - Security Policy: [`SECURITY.md`](SECURITY.md)
+- Code of Conduct: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 - Changelog: [`CHANGELOG.md`](CHANGELOG.md)
 - License: [`LICENSE`](LICENSE)

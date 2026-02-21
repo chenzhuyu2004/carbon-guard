@@ -1,64 +1,126 @@
 # CLI Command Reference
 
+This page is the authoritative reference for all commands.
+
+## Global Notes
+
+- Use `--json` on `run` for machine-readable output.
+- Use `--output text|json` on `optimize` and `optimize-global`.
+- Commands using live carbon data require `ELECTRICITY_MAPS_API_KEY`.
+
 ## `run`
 
 Estimate emissions for a runtime.
 
-Example:
+### Syntax
 
 ```bash
-carbon-guard run --duration 300 --json
+carbon-guard run --duration <seconds> [flags]
 ```
 
-Key flags:
+### Flags
 
-- `--duration` required, runtime seconds.
-- `--budget-kg` optional carbon budget.
-- `--baseline-kg` optional baseline for percentage delta.
-- `--fail-on-budget` exit non-zero when budget exceeded.
-- `--json` machine-readable output.
+| Flag | Type | Default | Required | Description |
+| --- | --- | --- | --- | --- |
+| `--duration` | int | `0` | Yes | Runtime in seconds, must be `> 0`. |
+| `--runner` | string | `ubuntu` | No | Runner profile: `ubuntu`, `windows`, `macos`. |
+| `--region` | string | `global` | No | Static carbon-intensity region key. |
+| `--load` | float | `0.6` | No | CPU load factor, range `[0,1]`. |
+| `--pue` | float | `1.2` | No | Data center PUE, must be `>= 1.0`. |
+| `--segments` | string | `""` | No | Dynamic CI segments: `duration:ci,duration:ci`. |
+| `--live-ci` | string | `""` | No | Fetch live CI for a zone via API. |
+| `--budget-kg` | float | `0` | No | Carbon budget in kgCO2. |
+| `--baseline-kg` | float | `0` | No | Baseline emissions in kgCO2 for delta. |
+| `--fail-on-budget` | bool | `false` | No | Return non-zero when emissions exceed budget. |
+| `--json` | bool | `false` | No | Emit JSON output. |
+
+### Examples
+
+```bash
+carbon-guard run --duration 300
+carbon-guard run --duration 900 --runner windows --region us --load 0.8 --pue 1.25
+carbon-guard run --duration 1200 --live-ci DE --json
+carbon-guard run --duration 300 --budget-kg 0.01 --fail-on-budget
+```
 
 ## `suggest`
 
-Recommend a greener execution window for one zone forecast.
+Recommend a lower-carbon execution window for one zone.
 
-Example:
+### Syntax
 
 ```bash
-carbon-guard suggest --zone DE --duration 1800 --lookahead 6
+carbon-guard suggest --zone <ZONE> --duration <seconds> [flags]
 ```
+
+### Flags
+
+| Flag | Type | Default | Required | Description |
+| --- | --- | --- | --- | --- |
+| `--zone` | string | `""` | Yes | Electricity Maps zone (for example `DE`). |
+| `--duration` | int | `0` | Yes | Runtime in seconds. |
+| `--threshold` | float | `0.35` | No | Current CI threshold (`kgCO2/kWh`). |
+| `--lookahead` | int | `6` | No | Forecast lookahead in hours. |
 
 ## `run-aware`
 
-Wait for better carbon conditions, then run.
+Wait for greener conditions before running.
 
-Example:
+### Syntax
 
 ```bash
-carbon-guard run-aware --zone DE --threshold 0.35 --max-wait 2h
+carbon-guard run-aware --zone <ZONE> --duration <seconds> [flags]
 ```
+
+### Flags
+
+| Flag | Type | Default | Required | Description |
+| --- | --- | --- | --- | --- |
+| `--zone` | string | `""` | Yes | Electricity Maps zone. |
+| `--duration` | int | `0` | Yes | Runtime in seconds. |
+| `--threshold` | float | `0.35` | No | CI threshold (`kgCO2/kWh`). |
+| `--lookahead` | int | `6` | No | Forecast lookahead in hours. |
+| `--max-wait` | float | `6` | No | Maximum wait time in hours. |
+| `--cache-dir` | string | `~/.carbon-guard` | No | Forecast cache directory. |
+| `--cache-ttl` | duration | `10m` | No | Cache TTL (Go duration format). |
 
 ## `optimize`
 
-Compare zones and rank by expected emissions.
+Compare multiple zones and rank by expected emission.
 
-Example:
+### Syntax
 
 ```bash
-carbon-guard optimize --zones DE,FR,PL --duration 1800 --lookahead 6
+carbon-guard optimize --zones <Z1,Z2,...> --duration <seconds> [flags]
 ```
+
+### Flags
+
+| Flag | Type | Default | Required | Description |
+| --- | --- | --- | --- | --- |
+| `--zones` | string | `""` | Yes | Comma-separated zones, whitespace-safe. |
+| `--duration` | int | `0` | Yes | Runtime in seconds. |
+| `--lookahead` | int | `6` | No | Forecast lookahead in hours. |
+| `--timeout` | duration | `30s` | No | Command timeout (Go duration). |
+| `--output` | string | `text` | No | `text` or `json`. |
+| `--cache-dir` | string | `~/.carbon-guard` | No | Forecast cache directory. |
+| `--cache-ttl` | duration | `10m` | No | Cache TTL. |
 
 ## `optimize-global`
 
-Find best `(time, zone)` pair over common forecast timestamps.
+Find the globally optimal `(time, zone)` over shared forecast timestamps.
 
-Example:
+### Syntax
 
 ```bash
-carbon-guard optimize-global --zones DE,FR,PL --duration 1800 --lookahead 6
+carbon-guard optimize-global --zones <Z1,Z2,...> --duration <seconds> [flags]
 ```
 
-## Standard Exit Codes
+### Flags
+
+Same as `optimize`.
+
+## Exit Codes
 
 | Code | Meaning |
 | --- | --- |

@@ -1,27 +1,28 @@
 # Documentation Index
 
-This is the canonical entry for project documentation.
+This is the canonical documentation hub for Carbon Guard.
 
-## Getting Started
+## 1. Start Here
 
-- README quick start: [`../README.md`](../README.md)
-- GitHub Action usage: [`action.md`](action.md)
-- Workflow examples: [`examples/`](examples)
+1. [`../README.md`](../README.md): project overview and quick start.
+2. [`commands.md`](commands.md): complete CLI reference.
+3. [`action.md`](action.md): GitHub Action contract and examples.
 
-## CLI & Contracts
+## 2. Runtime & Configuration
 
-- Command reference: [`commands.md`](commands.md)
-- Troubleshooting: [`troubleshooting.md`](troubleshooting.md)
-- FAQ: [`faq.md`](faq.md)
+- [`configuration.md`](configuration.md): environment variables, cache settings, budget/baseline conventions.
+- [`troubleshooting.md`](troubleshooting.md): common failures and fixes.
+- [`faq.md`](faq.md): design decisions and usage FAQs.
 
-## Engineering
+## 3. Engineering Internals
 
-- Architecture: [`architecture.md`](architecture.md)
-- Release process: [`release.md`](release.md)
+- [`architecture.md`](architecture.md): layered architecture and dependency boundaries.
+- [`release.md`](release.md): release and tag process.
 
-## Governance
+## 4. Governance
 
-- Contributing: [`../CONTRIBUTING.md`](../CONTRIBUTING.md)
-- Security: [`../SECURITY.md`](../SECURITY.md)
-- Code of Conduct: [`../CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md)
-- Changelog: [`../CHANGELOG.md`](../CHANGELOG.md)
+- [`governance.md`](governance.md): branch protection policy, review mode, repository standards.
+- [`../CONTRIBUTING.md`](../CONTRIBUTING.md)
+- [`../SECURITY.md`](../SECURITY.md)
+- [`../CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md)
+- [`../CHANGELOG.md`](../CHANGELOG.md)
