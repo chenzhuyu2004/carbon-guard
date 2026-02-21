@@ -13,6 +13,13 @@ All notable changes to this project are documented in this file.
 - GitHub Action inputs/outputs for budget and baseline signals.
 - CI step summary and PR comment reporting workflow.
 - Governance documents: CONTRIBUTING, CODE_OF_CONDUCT, SECURITY.
+- Full docs suite:
+  - Action guide
+  - Architecture notes
+  - Troubleshooting
+  - FAQ
+  - Release process
+  - Workflow examples
 
 ### Changed
 

@@ -6,28 +6,37 @@
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Carbon Savings](https://img.shields.io/badge/carbon%20savings-track%20it-success)
 
-Carbon Guard helps engineering teams measure and reduce CI emissions with actionable, carbon-aware scheduling.
+Carbon Guard helps engineering teams estimate CI emissions, enforce carbon budgets, and schedule workloads for lower-carbon windows.
 
-## Installation
+## 30-Second Quick Start
 
-### Go
+### Local CLI
 
 ```bash
 go install github.com/czy/carbon-guard@latest
+carbon-guard run --duration 300 --json
 ```
 
-### Docker
+### GitHub Action
 
-```bash
-docker run --rm ghcr.io/czy/carbon-guard:latest run --duration 300
+```yaml
+- name: Record start time
+  run: echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
+
+- name: Carbon Guard
+  id: carbon
+  uses: czy/carbon-guard@v1
+  with:
+    start_time: ${{ env.START_TIME }}
+
+- name: Print emissions
+  run: echo "emissions_kg=${{ steps.carbon.outputs.emissions_kg }}"
 ```
 
-## Key Features
+## Product Forms
 
-- Real-time carbon intensity via Electricity Maps integration.
-- **Run-aware scheduling** that waits for greener execution windows.
-- **Global region optimization** to pick the cleanest zone for your workload.
-- Built with **Clean Architecture (Hexagonal / Ports & Adapters)** for production-grade maintainability and learning.
+- Local binary CLI (`carbon-guard`)
+- Docker-based GitHub Action (`uses: czy/carbon-guard@v1`)
 
 ## Architecture
 
@@ -35,77 +44,70 @@ docker run --rm ghcr.io/czy/carbon-guard:latest run --duration 300
 flowchart TD
   CLI["CLI / cmd"] --> APP["App / Use Cases"]
   APP --> DOMAIN["Domain / Scheduling"]
-  INFRA["Infrastructure / Electricity Maps"] --> DOMAIN
+  APP --> INFRA["Infrastructure / CI Provider"]
 ```
 
-## Usage
+See full architecture notes: [`docs/architecture.md`](docs/architecture.md)
 
-```bash
-# Basic emissions estimate
-carbon-guard run --duration 300
+## Core Commands
 
-# Enforce a carbon budget in CI
-carbon-guard run --duration 300 --budget-kg 0.0100 --fail-on-budget
+| Command | Purpose |
+| --- | --- |
+| `run` | Estimate emissions for a runtime (supports budget gate and baseline delta). |
+| `suggest` | Recommend a lower-carbon execution window for one zone. |
+| `run-aware` | Wait for better carbon conditions before running. |
+| `optimize` | Compare zones and pick the lowest-emission option. |
+| `optimize-global` | Joint optimization across zone and time axis intersection. |
 
-# Find the greenest zone and time window
-carbon-guard optimize --zones "DE,FR,US-NY" --duration 3600
+### `run` key flags
 
-# Wait for a greener run window (max 2h)
-carbon-guard run-aware --max-wait 2h
-```
+| Flag | Description |
+| --- | --- |
+| `--duration` | Runtime in seconds. Required. |
+| `--budget-kg` | Optional carbon budget in kgCO2. |
+| `--fail-on-budget` | Fail command when budget exceeded. |
+| `--baseline-kg` | Optional baseline kgCO2 for delta comparison. |
+| `--json` | Machine-readable output. |
 
-## GitHub Action Runtime Tracking
+## GitHub Action Contract
 
-### Quick Start (30s)
+### Inputs
 
-```yaml
-- name: Record start time
-  run: echo "GH_ACTION_START_TIME=$(date +%s)" >> $GITHUB_ENV
+| Name | Required | Description |
+| --- | --- | --- |
+| `duration` | No | Runtime in seconds. Highest priority when set. |
+| `start_time` | No | Unix timestamp (seconds). Used when duration is empty. |
+| `budget_kg` | No | Optional carbon budget in kgCO2. |
+| `fail_on_budget` | No | If `true`, action fails when over budget. |
+| `baseline_kg` | No | Optional baseline kgCO2 for percentage delta. |
 
-- name: Carbon Guard
-  id: carbon
-  uses: czy/carbon-guard@v1
-  with:
-    start_time: ${{ env.GH_ACTION_START_TIME }}
-  env:
-    ELECTRICITY_MAPS_API_KEY: ${{ secrets.ELECTRICITY_MAPS_API_KEY }}
+### Outputs
 
-- name: Print output
-  run: echo "emissions_kg=${{ steps.carbon.outputs.emissions_kg }}"
-```
+| Name | Description |
+| --- | --- |
+| `emissions_kg` | Estimated emissions in kgCO2. |
+| `budget_exceeded` | `true`/`false` when budget provided. |
+| `delta_vs_baseline_pct` | Percentage delta vs baseline (if provided). |
 
-### Input Contract
-
-For accurate runtime emissions in GitHub Actions, pass either:
-- `duration` directly, or
-- `start_time` as a Unix timestamp (seconds).
-
-Priority order:
+Runtime resolution order:
 1. `duration`
 2. `start_time`
-3. `GH_ACTION_START_TIME` (backward compatibility env var)
+3. `GH_ACTION_START_TIME` (legacy env var)
 
-If none is provided, the action fails fast with a clear error.
+Full Action docs: [`docs/action.md`](docs/action.md)
 
-```yaml
-- name: Record start time
-  run: echo "GH_ACTION_START_TIME=$(date +%s)" >> $GITHUB_ENV
+## Exit Codes
 
-- uses: czy/carbon-guard@v1
-  with:
-    start_time: ${{ env.GH_ACTION_START_TIME }}
-    budget_kg: "0.2000"
-    fail_on_budget: "true"
-    baseline_kg: "0.1500"
-  env:
-    ELECTRICITY_MAPS_API_KEY: ${{ secrets.ELECTRICITY_MAPS_API_KEY }}
-```
-
-Backward compatibility: `GH_ACTION_START_TIME` environment variable is still supported.
-
-Repository-level optimization:
-- Set `CARBON_BUDGET_KG` and `CARBON_BASELINE_KG` as GitHub Repository Variables.
-- CI will publish a Step Summary and post/update a Carbon Guard PR comment automatically.
+| Code | Meaning |
+| --- | --- |
+| `0` | Success |
+| `1` | Input error |
+| `2` | Provider/API error |
+| `10` | Max wait exceeded |
+| `11` | Missed optimal window |
+| `12` | Timeout |
+| `20` | No valid window found |
+| `21` | Budget exceeded |
 
 ## PR Comment Preview
 
@@ -119,26 +121,28 @@ Repository-level optimization:
 - Delta vs baseline: `-15.85%`
 ```
 
-## Real-World Example (This Repository)
+## Example Workflows
 
-- Workflow runtime window analyzed: ~10 minutes
-- Carbon budget threshold: `0.0150 kgCO2`
-- Latest sample emission: `0.0138 kgCO2`
-- Outcome: budget passed, with a double-digit reduction vs baseline
+- Report only: [`docs/examples/report-only.yml`](docs/examples/report-only.yml)
+- Budget gate: [`docs/examples/budget-gate.yml`](docs/examples/budget-gate.yml)
+- Baseline + PR comment: [`docs/examples/baseline-pr-comment.yml`](docs/examples/baseline-pr-comment.yml)
 
-Use this as a template to set your own repository budget and baseline targets.
+## Documentation Index
 
-## Troubleshooting
+- Action guide: [`docs/action.md`](docs/action.md)
+- Architecture: [`docs/architecture.md`](docs/architecture.md)
+- Troubleshooting: [`docs/troubleshooting.md`](docs/troubleshooting.md)
+- FAQ: [`docs/faq.md`](docs/faq.md)
+- Release process: [`docs/release.md`](docs/release.md)
 
-- `carbon-guard execution failed`:
-  - Ensure the action image builds successfully and workflow uses `uses: czy/carbon-guard@v1`.
-- `missing ELECTRICITY_MAPS_API_KEY`:
-  - Add repository secret `ELECTRICITY_MAPS_API_KEY`.
-- `Missing runtime input`:
-  - Provide `with: duration` or `with: start_time`, or export `GH_ACTION_START_TIME`.
-- Empty/invalid `emissions_kg` output:
-  - Check action logs and confirm the `run` step completed without budget enforcement failure.
+## Development
+
+```bash
+make test
+make lint
+make build
+```
 
 ## Why Carbon Guard
 
-CI is invisible infrastructure waste. Carbon Guard turns runtime into a carbon signal so teams can ship fast and smarter.
+CI energy is usually invisible. Carbon Guard turns it into an explicit, enforceable engineering signal.
