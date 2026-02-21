@@ -7,26 +7,32 @@
 ![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)
 ![CodeQL](https://img.shields.io/badge/Security-CodeQL-black)
 
-Carbon Guard helps engineering teams make CI emissions visible, enforce carbon budgets, and schedule workloads in greener windows.
+Carbon Guard turns CI runtime into a measurable carbon signal you can **report, compare, and enforce**.
+
+---
 
 ## Quick Navigation
 
-| I want to... | Go here |
+| Goal | Link |
 | --- | --- |
-| Start in 1 minute | [Quick Start](#quick-start) |
-| Use it in GitHub Actions | [`docs/action.md`](docs/action.md) |
-| See all CLI flags & outputs | [`docs/commands.md`](docs/commands.md) |
-| Understand architecture | [`docs/architecture.md`](docs/architecture.md) |
-| Configure cache/env/thresholds | [`docs/configuration.md`](docs/configuration.md) |
-| Understand governance/review policy | [`docs/governance.md`](docs/governance.md) |
+| 1‑minute quick start | [Quick Start](#quick-start) |
+| CLI flags & outputs | [`docs/commands.md`](docs/commands.md) |
+| GitHub Action contract | [`docs/action.md`](docs/action.md) |
+| Configuration (cache, env, timeouts) | [`docs/configuration.md`](docs/configuration.md) |
+| Architecture | [`docs/architecture.md`](docs/architecture.md) |
+| Governance | [`docs/governance.md`](docs/governance.md) |
+
+---
 
 ## What You Get
 
-- `run`: runtime carbon report (`kgCO2`) with budget and baseline support.
-- `suggest` / `run-aware`: carbon-aware scheduling for a single zone.
-- `optimize` / `optimize-global`: multi-zone optimization over forecast windows.
-- Local CLI and Docker-based GitHub Action with a stable output contract.
+- `run`: per‑run carbon report (`kgCO2`) with budget and baseline support.
+- `suggest` / `run-aware`: carbon‑aware scheduling for a single zone.
+- `optimize` / `optimize-global`: multi‑zone optimization over forecast windows.
+- Local CLI and Docker‑based GitHub Action with a stable output contract.
 - Zero runtime dependencies (Go standard library only).
+
+---
 
 ## Quick Start
 
@@ -53,6 +59,8 @@ carbon-guard run --duration 300 --json
   run: echo "emissions_kg=${{ steps.carbon.outputs.emissions_kg }}"
 ```
 
+---
+
 ## Example Output
 
 ```text
@@ -61,21 +69,25 @@ Carbon Report
 -----------------------------------
 Duration: 300s
 Estimated Emissions: 0.0067 kgCO2
-Score: A 🌿
+Score: A
 Equivalent to charging 1 smartphones
 Equivalent to driving an EV 0.1 km
 -----------------------------------
 ```
 
-## Architecture Snapshot
+---
+
+## How It Works (At a Glance)
 
 ```mermaid
 flowchart LR
-  CMD[cmd] --> APP[internal/app]
-  APP --> DOMAIN[internal/domain/scheduling]
-  APP --> INFRA[internal/ci]
-  APP --> CALC[internal/calculator]
+  CLI[CLI cmd] --> APP[Use Cases]
+  APP --> DOMAIN[Scheduling]
+  APP --> INFRA[CI Provider]
+  APP --> CALC[Emission Model]
 ```
+
+---
 
 ## Repository Layout
 
@@ -88,7 +100,9 @@ docs/                user and maintainer documentation
 .github/workflows/   CI and security automation
 ```
 
-## Documentation
+---
+
+## Documentation Hub
 
 Start with [`docs/index.md`](docs/index.md).
 
@@ -99,6 +113,8 @@ Start with [`docs/index.md`](docs/index.md).
 - FAQ: [`docs/faq.md`](docs/faq.md)
 - Governance: [`docs/governance.md`](docs/governance.md)
 - Release Process: [`docs/release.md`](docs/release.md)
+
+---
 
 ## Community & Governance
 
