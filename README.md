@@ -32,10 +32,10 @@ docker run --rm ghcr.io/czy/carbon-guard:latest run --duration 300
 ## Architecture
 
 ```mermaid
-graph TD
-  CLI[CLI (cmd)] --> APP[App (Use Cases)]
-  APP --> DOMAIN[Domain (Scheduling)]
-  INFRA[Infrastructure (Electricity Maps)] --> DOMAIN
+flowchart TD
+  CLI["CLI / cmd"] --> APP["App / Use Cases"]
+  APP --> DOMAIN["Domain / Scheduling"]
+  INFRA["Infrastructure / Electricity Maps"] --> DOMAIN
 ```
 
 ## Usage
