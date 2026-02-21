@@ -5,6 +5,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   pull-requests: write
 
 jobs:
@@ -13,14 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Record start time
-        run: echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
-
       - name: Carbon Guard
         id: carbon
         uses: chenzhuyu2004/carbon-guard@v1
         with:
-          start_time: ${{ env.START_TIME }}
+          github_token: ${{ github.token }}
           budget_kg: "0.0150"
           baseline_kg: "0.0164"
           fail_on_budget: "false"

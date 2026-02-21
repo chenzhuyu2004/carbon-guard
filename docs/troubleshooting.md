@@ -8,15 +8,15 @@ Cause:
 Checks:
 1. Confirm workflow uses `uses: chenzhuyu2004/carbon-guard@v1`.
 2. Open failed job logs and inspect the exact command error.
-3. Ensure runtime inputs (`duration` or `start_time`) are provided.
+3. Ensure runtime inputs are provided (`duration` or `start_time`), or pass `github_token` for auto runtime detection.
 
 ## `Missing runtime input`
 
 Cause:
-- None of `duration`, `start_time`, `GH_ACTION_START_TIME` were provided.
+- None of `duration`, `start_time`, `github_token`, `GH_ACTION_START_TIME` were provided.
 
 Fix:
-- Pass `with: duration` OR `with: start_time`.
+- Pass `with: duration`, or `with: start_time`, or `with: github_token: ${{ github.token }}` and grant `actions: read`.
 
 ## `Invalid duration`
 

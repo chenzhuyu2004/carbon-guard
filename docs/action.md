@@ -8,6 +8,7 @@ Carbon Guard ships as a Docker-based GitHub Action.
 | --- | --- | --- | --- | --- |
 | `duration` | string | No | `""` | Runtime in seconds. Highest priority if set. |
 | `start_time` | string | No | `""` | Unix timestamp (seconds). Used when `duration` is empty. |
+| `github_token` | string | No | `""` | Token for auto runtime detection from current workflow run metadata. |
 | `budget_kg` | string | No | `""` | Optional carbon budget in kgCO2. |
 | `fail_on_budget` | string | No | `"false"` | If `"true"`, action fails when `emissions_kg > budget_kg`. |
 | `baseline_kg` | string | No | `""` | Optional baseline in kgCO2 for delta calculation. |
@@ -22,37 +23,59 @@ Carbon Guard ships as a Docker-based GitHub Action.
 
 ## Runtime Resolution Order
 
-Carbon Guard resolves runtime inputs in this strict order:
+Carbon Guard resolves runtime inputs in this order:
 
 1. `duration`
 2. `start_time`
-3. `GH_ACTION_START_TIME` (legacy backward-compatible env var)
+3. `github_token` (or `GITHUB_TOKEN`) via GitHub Actions run metadata
+4. `GH_ACTION_START_TIME` (legacy backward-compatible env var)
 
 If all are missing, the action fails fast.
 
-## Minimal Example
+## Simplest Example
 
 ```yaml
-- name: Record start time
-  run: echo "GH_ACTION_START_TIME=$(date +%s)" >> $GITHUB_ENV
-
 - name: Carbon Guard
   id: carbon
   uses: chenzhuyu2004/carbon-guard@v1
   with:
-    start_time: ${{ env.GH_ACTION_START_TIME }}
+    duration: "300"
 
 - name: Print emissions
   run: echo "emissions_kg=${{ steps.carbon.outputs.emissions_kg }}"
 ```
 
+## Real Runtime Without Extra Start-Time Step
+
+```yaml
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  carbon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Carbon Guard
+        id: carbon
+        uses: chenzhuyu2004/carbon-guard@v1
+        with:
+          github_token: ${{ github.token }}
+```
+
 ## Budget Gate Example
 
 ```yaml
+permissions:
+  contents: read
+  actions: read
+
 - name: Carbon Guard (Budget Gate)
   uses: chenzhuyu2004/carbon-guard@v1
   with:
-    start_time: ${{ env.GH_ACTION_START_TIME }}
+    github_token: ${{ github.token }}
     budget_kg: "0.0150"
     fail_on_budget: "true"
 ```
