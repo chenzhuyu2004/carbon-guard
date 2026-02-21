@@ -46,14 +46,11 @@ carbon-guard run --duration 300 --json
 ### GitHub Action
 
 ```yaml
-- name: Record start time
-  run: echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
-
 - name: Carbon Guard
   id: carbon
   uses: chenzhuyu2004/carbon-guard@v1
   with:
-    start_time: ${{ env.START_TIME }}
+    duration: "300"
 
 - name: Print emissions
   run: echo "emissions_kg=${{ steps.carbon.outputs.emissions_kg }}"

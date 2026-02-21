@@ -11,6 +11,10 @@ inputs:
     description: "Unix timestamp (seconds). Used when duration is not provided"
     required: false
     default: ""
+  github_token:
+    description: "GitHub token used to auto-detect runtime from workflow run metadata when duration/start_time are omitted"
+    required: false
+    default: ""
   budget_kg:
     description: "Optional carbon budget in kgCO2"
     required: false

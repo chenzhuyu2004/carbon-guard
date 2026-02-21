@@ -18,16 +18,55 @@ DURATION=""
 BUDGET_EXCEEDED="false"
 DELTA_VS_BASELINE_PCT=""
 
+resolve_duration_from_run_metadata() {
+  token="${INPUT_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}"
+  if [ -z "$token" ] || [ -z "${GITHUB_REPOSITORY:-}" ] || [ -z "${GITHUB_RUN_ID:-}" ]; then
+    return 1
+  fi
+
+  api_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+  run_json=""
+
+  if command -v wget >/dev/null 2>&1; then
+    run_json=$(wget -qO- \
+      --header="Authorization: Bearer ${token}" \
+      --header="Accept: application/vnd.github+json" \
+      "$api_url" 2>/dev/null || true)
+  elif command -v curl >/dev/null 2>&1; then
+    run_json=$(curl -fsSL \
+      -H "Authorization: Bearer ${token}" \
+      -H "Accept: application/vnd.github+json" \
+      "$api_url" 2>/dev/null || true)
+  fi
+
+  [ -z "$run_json" ] && return 1
+
+  run_started_at=$(echo "$run_json" | tr -d '\n' | sed -n 's/.*"run_started_at":"\([^"]*\)".*/\1/p')
+  [ -z "$run_started_at" ] && return 1
+
+  start_epoch=$(date -D '%Y-%m-%dT%H:%M:%SZ' -d "$run_started_at" +%s 2>/dev/null || date -u -d "$run_started_at" +%s 2>/dev/null || true)
+  [ -z "$start_epoch" ] && return 1
+
+  now_epoch=$(date +%s)
+  runtime=$((now_epoch - start_epoch))
+  [ "$runtime" -le 0 ] && return 1
+
+  DURATION="$runtime"
+  return 0
+}
+
 if [ -n "${INPUT_DURATION:-}" ]; then
   DURATION="$INPUT_DURATION"
 elif [ -n "${INPUT_START_TIME:-}" ]; then
   NOW=$(date +%s)
   DURATION=$((NOW - INPUT_START_TIME))
+elif resolve_duration_from_run_metadata; then
+  :
 elif [ -n "${GH_ACTION_START_TIME:-}" ]; then
   NOW=$(date +%s)
   DURATION=$((NOW - GH_ACTION_START_TIME))
 else
-  fail "Missing runtime input: provide either 'duration' or 'start_time' (or GH_ACTION_START_TIME for backward compatibility)."
+  fail "Missing runtime input: provide duration/start_time, or github_token for auto runtime detection."
 fi
 
 case "$DURATION" in

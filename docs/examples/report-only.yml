@@ -4,20 +4,21 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   carbon-report:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Record start time
-        run: echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
-
       - name: Run Carbon Guard Action
         id: carbon
         uses: chenzhuyu2004/carbon-guard@v1
         with:
-          start_time: ${{ env.START_TIME }}
+          github_token: ${{ github.token }}
 
       - name: Show output
         run: echo "emissions_kg=${{ steps.carbon.outputs.emissions_kg }}"
