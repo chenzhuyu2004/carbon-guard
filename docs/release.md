@@ -34,3 +34,10 @@ gh release create vX.Y.Z --title "vX.Y.Z" --notes-file CHANGELOG.md
 1. Verify release page and artifacts.
 2. Validate README examples against released tag.
 3. Update roadmap/issues for next milestone.
+
+## Version Tag Policy
+
+- Use immutable SemVer tags for releases: `vX.Y.Z`.
+- Keep a moving major tag `vX` for GitHub Action consumers.
+- Never retag an existing `vX.Y.Z` release.
+- When publishing a new patch/minor in a major line, move `vX` to that new release commit.
