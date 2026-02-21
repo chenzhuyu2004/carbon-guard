@@ -56,7 +56,7 @@ if [ -n "${INPUT_BASELINE_KG:-}" ]; then
   set -- "$@" --baseline-kg "$INPUT_BASELINE_KG"
 fi
 
-if ! ./carbon-guard run "$@" > report.json; then
+if ! /app/carbon-guard run "$@" > report.json; then
   fail "carbon-guard execution failed"
 fi
 

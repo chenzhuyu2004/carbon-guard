@@ -56,11 +56,36 @@ carbon-guard run-aware --max-wait 2h
 
 ## GitHub Action Runtime Tracking
 
+### Quick Start (30s)
+
+```yaml
+- name: Record start time
+  run: echo "GH_ACTION_START_TIME=$(date +%s)" >> $GITHUB_ENV
+
+- name: Carbon Guard
+  id: carbon
+  uses: czy/carbon-guard@v1
+  with:
+    start_time: ${{ env.GH_ACTION_START_TIME }}
+  env:
+    ELECTRICITY_MAPS_API_KEY: ${{ secrets.ELECTRICITY_MAPS_API_KEY }}
+
+- name: Print output
+  run: echo "emissions_kg=${{ steps.carbon.outputs.emissions_kg }}"
+```
+
+### Input Contract
+
 For accurate runtime emissions in GitHub Actions, pass either:
 - `duration` directly, or
 - `start_time` as a Unix timestamp (seconds).
 
-If neither is provided, the action fails fast with a clear error.
+Priority order:
+1. `duration`
+2. `start_time`
+3. `GH_ACTION_START_TIME` (backward compatibility env var)
+
+If none is provided, the action fails fast with a clear error.
 
 ```yaml
 - name: Record start time
@@ -102,6 +127,17 @@ Repository-level optimization:
 - Outcome: budget passed, with a double-digit reduction vs baseline
 
 Use this as a template to set your own repository budget and baseline targets.
+
+## Troubleshooting
+
+- `carbon-guard execution failed`:
+  - Ensure the action image builds successfully and workflow uses `uses: czy/carbon-guard@v1`.
+- `missing ELECTRICITY_MAPS_API_KEY`:
+  - Add repository secret `ELECTRICITY_MAPS_API_KEY`.
+- `Missing runtime input`:
+  - Provide `with: duration` or `with: start_time`, or export `GH_ACTION_START_TIME`.
+- Empty/invalid `emissions_kg` output:
+  - Check action logs and confirm the `run` step completed without budget enforcement failure.
 
 ## Why Carbon Guard
 
