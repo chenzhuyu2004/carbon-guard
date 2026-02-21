@@ -1,6 +1,9 @@
 package ci
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type ForecastPoint struct {
 	Timestamp time.Time
@@ -8,6 +11,6 @@ type ForecastPoint struct {
 }
 
 type Provider interface {
-	GetCurrentCI(zone string) (float64, error)
-	GetForecastCI(zone string, hours int) ([]ForecastPoint, error)
+	GetCurrentCI(ctx context.Context, zone string) (float64, error)
+	GetForecastCI(ctx context.Context, zone string, hours int) ([]ForecastPoint, error)
 }

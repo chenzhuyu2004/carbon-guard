@@ -1,28 +1,13 @@
 package calculator
 
-import "github.com/czy/carbon-guard/pkg"
-
-type PowerProfile struct {
-	Idle float64
-	Peak float64
-}
+import (
+	"github.com/czy/carbon-guard/pkg"
+	"github.com/czy/carbon-guard/pkg/models"
+)
 
 type Segment struct {
 	Duration int
 	CI       float64
-}
-
-var runnerProfiles = map[string]PowerProfile{
-	"ubuntu":  {Idle: 110, Peak: 220},
-	"windows": {Idle: 150, Peak: 300},
-	"macos":   {Idle: 100, Peak: 200},
-}
-
-var regionCarbonIntensity = map[string]float64{
-	"global": 0.4,
-	"china":  0.58,
-	"us":     0.38,
-	"eu":     0.28,
 }
 
 func EstimateEmissionsKg(durationSeconds int) float64 {
@@ -30,14 +15,14 @@ func EstimateEmissionsKg(durationSeconds int) float64 {
 }
 
 func EstimateEmissionsAdvanced(duration int, runner string, region string, load float64, pue float64) float64 {
-	profile, ok := runnerProfiles[runner]
+	profile, ok := models.RunnerProfiles[runner]
 	if !ok {
-		profile = runnerProfiles["ubuntu"]
+		profile = models.RunnerProfiles["ubuntu"]
 	}
 
-	ci, ok := regionCarbonIntensity[region]
+	ci, ok := models.RegionCarbonIntensity[region]
 	if !ok {
-		ci = regionCarbonIntensity["global"]
+		ci = models.RegionCarbonIntensity["global"]
 	}
 
 	power := profile.Idle + (profile.Peak-profile.Idle)*load
@@ -52,9 +37,9 @@ func EstimateEmissionsWithSegments(
 	load float64,
 	pue float64,
 ) float64 {
-	profile, ok := runnerProfiles[runner]
+	profile, ok := models.RunnerProfiles[runner]
 	if !ok {
-		profile = runnerProfiles["ubuntu"]
+		profile = models.RunnerProfiles["ubuntu"]
 	}
 
 	power := profile.Idle + (profile.Peak-profile.Idle)*load
