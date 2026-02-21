@@ -1,0 +1,20 @@
+name: Carbon Budget Gate
+
+on:
+  pull_request:
+
+jobs:
+  carbon-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record start time
+        run: echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
+
+      - name: Enforce budget
+        uses: czy/carbon-guard@v1
+        with:
+          start_time: ${{ env.START_TIME }}
+          budget_kg: "0.0150"
+          fail_on_budget: "true"
