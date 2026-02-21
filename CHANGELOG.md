@@ -1,0 +1,24 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+## [Unreleased]
+
+### Added
+
+- Carbon budget gating flags for `run`:
+  - `--budget-kg`
+  - `--baseline-kg`
+  - `--fail-on-budget`
+- GitHub Action inputs/outputs for budget and baseline signals.
+- CI step summary and PR comment reporting workflow.
+- Governance documents: CONTRIBUTING, CODE_OF_CONDUCT, SECURITY.
+
+### Changed
+
+- Action runtime input contract now prefers explicit `duration` or `start_time`.
+- `.gitignore` expanded for build, coverage, logs, and editor artifacts.
+
+### Fixed
+
+- Dedicated exit code for carbon budget exceedance.

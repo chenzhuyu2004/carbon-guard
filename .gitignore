@@ -1,1 +1,24 @@
 carbon-guard
+cg
+
+# Build outputs
+*.exe
+*.dll
+*.so
+*.dylib
+*.out
+
+# Reports and coverage
+report.json
+coverage.out
+
+# Logs and temp
+*.log
+tmp/
+
+# Editor and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
