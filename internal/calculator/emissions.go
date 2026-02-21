@@ -1,8 +1,8 @@
 package calculator
 
 import (
-	"github.com/czy/carbon-guard/pkg"
-	"github.com/czy/carbon-guard/pkg/models"
+	"github.com/chenzhuyu2004/carbon-guard/pkg"
+	"github.com/chenzhuyu2004/carbon-guard/pkg/models"
 )
 
 type Segment struct {

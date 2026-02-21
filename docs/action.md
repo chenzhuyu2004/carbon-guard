@@ -38,7 +38,7 @@ If all are missing, the action fails fast.
 
 - name: Carbon Guard
   id: carbon
-  uses: czy/carbon-guard@v1
+  uses: chenzhuyu2004/carbon-guard@v1
   with:
     start_time: ${{ env.GH_ACTION_START_TIME }}
 
@@ -50,7 +50,7 @@ If all are missing, the action fails fast.
 
 ```yaml
 - name: Carbon Guard (Budget Gate)
-  uses: czy/carbon-guard@v1
+  uses: chenzhuyu2004/carbon-guard@v1
   with:
     start_time: ${{ env.GH_ACTION_START_TIME }}
     budget_kg: "0.0150"

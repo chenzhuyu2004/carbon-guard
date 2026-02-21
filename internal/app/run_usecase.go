@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/czy/carbon-guard/internal/calculator"
+	"github.com/chenzhuyu2004/carbon-guard/internal/calculator"
 )
 
 func (a *App) Run(ctx context.Context, in RunInput) (RunResult, error) {

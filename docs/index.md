@@ -34,3 +34,4 @@ This is the canonical documentation hub for Carbon Guard.
 - [`../SECURITY.md`](../SECURITY.md)
 - [`../CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md)
 - [`../CHANGELOG.md`](../CHANGELOG.md)
+- [`community.md`](community.md): repository channels and contribution flow.

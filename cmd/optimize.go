@@ -8,9 +8,9 @@ import (
 	"os"
 	"time"
 
-	appsvc "github.com/czy/carbon-guard/internal/app"
-	"github.com/czy/carbon-guard/internal/ci"
-	cgerrors "github.com/czy/carbon-guard/internal/errors"
+	appsvc "github.com/chenzhuyu2004/carbon-guard/internal/app"
+	"github.com/chenzhuyu2004/carbon-guard/internal/ci"
+	cgerrors "github.com/chenzhuyu2004/carbon-guard/internal/errors"
 )
 
 type OptimizeZoneOutput struct {

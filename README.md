@@ -39,7 +39,7 @@ Carbon Guard turns CI runtime into a measurable carbon signal you can **report, 
 ### Local CLI
 
 ```bash
-go install github.com/czy/carbon-guard@latest
+go install github.com/chenzhuyu2004/carbon-guard@latest
 carbon-guard run --duration 300 --json
 ```
 
@@ -51,7 +51,7 @@ carbon-guard run --duration 300 --json
 
 - name: Carbon Guard
   id: carbon
-  uses: czy/carbon-guard@v1
+  uses: chenzhuyu2004/carbon-guard@v1
   with:
     start_time: ${{ env.START_TIME }}
 
@@ -123,3 +123,4 @@ Start with [`docs/index.md`](docs/index.md).
 - Code of Conduct: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 - Changelog: [`CHANGELOG.md`](CHANGELOG.md)
 - License: [`LICENSE`](LICENSE)
+- Support: [`SUPPORT.md`](SUPPORT.md)

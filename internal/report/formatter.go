@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/czy/carbon-guard/pkg"
+	"github.com/chenzhuyu2004/carbon-guard/pkg"
 )
 
 const divider = "-----------------------------------"

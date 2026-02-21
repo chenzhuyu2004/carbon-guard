@@ -3,7 +3,7 @@ package scheduling
 import (
 	"time"
 
-	"github.com/czy/carbon-guard/internal/calculator"
+	"github.com/chenzhuyu2004/carbon-guard/internal/calculator"
 )
 
 func IsWithinWindow(now time.Time, start time.Time, end time.Time) bool {

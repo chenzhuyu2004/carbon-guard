@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/czy/carbon-guard/internal/domain/scheduling"
+	"github.com/chenzhuyu2004/carbon-guard/internal/domain/scheduling"
 )
 
 type fakeProvider struct {

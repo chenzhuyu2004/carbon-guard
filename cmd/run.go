@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"os"
 
-	appsvc "github.com/czy/carbon-guard/internal/app"
-	"github.com/czy/carbon-guard/internal/ci"
-	cgerrors "github.com/czy/carbon-guard/internal/errors"
-	"github.com/czy/carbon-guard/internal/report"
+	appsvc "github.com/chenzhuyu2004/carbon-guard/internal/app"
+	"github.com/chenzhuyu2004/carbon-guard/internal/ci"
+	cgerrors "github.com/chenzhuyu2004/carbon-guard/internal/errors"
+	"github.com/chenzhuyu2004/carbon-guard/internal/report"
 )
 
 func run(args []string) error {

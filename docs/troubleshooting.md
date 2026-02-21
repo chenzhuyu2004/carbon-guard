@@ -6,7 +6,7 @@ Cause:
 - Runtime binary execution failed in action container.
 
 Checks:
-1. Confirm workflow uses `uses: czy/carbon-guard@v1`.
+1. Confirm workflow uses `uses: chenzhuyu2004/carbon-guard@v1`.
 2. Open failed job logs and inspect the exact command error.
 3. Ensure runtime inputs (`duration` or `start_time`) are provided.
 

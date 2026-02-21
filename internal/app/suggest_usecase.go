@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/czy/carbon-guard/internal/domain/scheduling"
+	"github.com/chenzhuyu2004/carbon-guard/internal/domain/scheduling"
 )
 
 func (a *App) AnalyzeBestWindow(ctx context.Context, zone string, duration int, lookahead int) (SuggestionAnalysis, error) {

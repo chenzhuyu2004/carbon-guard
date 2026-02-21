@@ -15,7 +15,7 @@ jobs:
 
       - name: Run Carbon Guard Action
         id: carbon
-        uses: czy/carbon-guard@v1
+        uses: chenzhuyu2004/carbon-guard@v1
         with:
           start_time: ${{ env.START_TIME }}
 
