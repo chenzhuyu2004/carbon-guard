@@ -90,6 +90,9 @@ func optimize(args []string) error {
 		Zones:     zoneList,
 		Duration:  *duration,
 		Lookahead: *lookahead,
+		Runner:    defaultSchedulingRunner,
+		Load:      defaultSchedulingLoad,
+		PUE:       defaultSchedulingPUE,
 		Timeout:   timeout,
 	})
 	if err != nil {

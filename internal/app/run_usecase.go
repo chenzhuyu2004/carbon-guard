@@ -7,7 +7,15 @@ import (
 	"strings"
 
 	"github.com/chenzhuyu2004/carbon-guard/internal/calculator"
+	"github.com/chenzhuyu2004/carbon-guard/pkg/models"
 )
+
+type runComputation struct {
+	DurationSeconds int
+	EmissionsKg     float64
+	EnergyITKWh     float64
+	EnergyTotalKWh  float64
+}
 
 func (a *App) Run(ctx context.Context, in RunInput) (RunResult, error) {
 	if in.Duration <= 0 {
@@ -20,39 +28,84 @@ func (a *App) Run(ctx context.Context, in RunInput) (RunResult, error) {
 		return RunResult{}, fmt.Errorf("%w: pue must be >= 1.0", ErrInput)
 	}
 
-	emissions, err := a.calculateEmissions(ctx, in)
+	computation, err := a.calculateEmissions(ctx, in)
 	if err != nil {
 		return RunResult{}, err
 	}
+	effectiveCI := 0.0
+	if computation.EnergyTotalKWh > 0 {
+		effectiveCI = computation.EmissionsKg / computation.EnergyTotalKWh
+	}
 
 	return RunResult{
-		DurationSeconds: in.Duration,
-		EmissionsKg:     emissions,
+		DurationSeconds:     computation.DurationSeconds,
+		EmissionsKg:         computation.EmissionsKg,
+		EnergyITKWh:         computation.EnergyITKWh,
+		EnergyTotalKWh:      computation.EnergyTotalKWh,
+		EffectiveCIKgPerKWh: effectiveCI,
 	}, nil
 }
 
-func (a *App) calculateEmissions(ctx context.Context, in RunInput) (float64, error) {
+func (a *App) calculateEmissions(ctx context.Context, in RunInput) (runComputation, error) {
 	if in.SegmentsRaw != "" {
 		segments, err := parseSegments(in.SegmentsRaw)
 		if err != nil {
-			return 0, err
+			return runComputation{}, err
 		}
-		return calculator.EstimateEmissionsWithSegments(segments, in.Runner, in.Load, in.PUE), nil
+		duration := sumSegmentDurations(segments)
+		energyIT, energyTotal := estimateEnergyKWh(duration, in.Runner, in.Load, in.PUE)
+		return runComputation{
+			DurationSeconds: duration,
+			EmissionsKg:     calculator.EstimateEmissionsWithSegments(segments, in.Runner, in.Load, in.PUE),
+			EnergyITKWh:     energyIT,
+			EnergyTotalKWh:  energyTotal,
+		}, nil
 	}
 
 	if in.LiveZone != "" {
 		if a == nil || a.provider == nil {
-			return 0, fmt.Errorf("%w: live ci provider is not configured", ErrProvider)
+			return runComputation{}, fmt.Errorf("%w: live ci provider is not configured", ErrProvider)
 		}
 		ciValue, err := a.provider.GetCurrentCI(ctx, in.LiveZone)
 		if err != nil {
-			return 0, wrapProviderError(err)
+			return runComputation{}, wrapProviderError(err)
 		}
 		segments := []calculator.Segment{{Duration: in.Duration, CI: ciValue}}
-		return calculator.EstimateEmissionsWithSegments(segments, in.Runner, in.Load, in.PUE), nil
+		energyIT, energyTotal := estimateEnergyKWh(in.Duration, in.Runner, in.Load, in.PUE)
+		return runComputation{
+			DurationSeconds: in.Duration,
+			EmissionsKg:     calculator.EstimateEmissionsWithSegments(segments, in.Runner, in.Load, in.PUE),
+			EnergyITKWh:     energyIT,
+			EnergyTotalKWh:  energyTotal,
+		}, nil
 	}
 
-	return calculator.EstimateEmissionsAdvanced(in.Duration, in.Runner, in.Region, in.Load, in.PUE), nil
+	energyIT, energyTotal := estimateEnergyKWh(in.Duration, in.Runner, in.Load, in.PUE)
+	return runComputation{
+		DurationSeconds: in.Duration,
+		EmissionsKg:     calculator.EstimateEmissionsAdvanced(in.Duration, in.Runner, in.Region, in.Load, in.PUE),
+		EnergyITKWh:     energyIT,
+		EnergyTotalKWh:  energyTotal,
+	}, nil
+}
+
+func estimateEnergyKWh(duration int, runner string, load float64, pue float64) (float64, float64) {
+	profile, ok := models.RunnerProfiles[runner]
+	if !ok {
+		profile = models.RunnerProfiles["ubuntu"]
+	}
+
+	power := profile.Idle + (profile.Peak-profile.Idle)*load
+	energyIT := float64(duration) * power / 1000.0 / 3600.0
+	return energyIT, energyIT * pue
+}
+
+func sumSegmentDurations(segments []calculator.Segment) int {
+	total := 0
+	for _, segment := range segments {
+		total += segment.Duration
+	}
+	return total
 }
 
 func parseSegments(raw string) ([]calculator.Segment, error) {

@@ -13,6 +13,12 @@ import (
 	cgerrors "github.com/chenzhuyu2004/carbon-guard/internal/errors"
 )
 
+const (
+	defaultSchedulingRunner = "ubuntu"
+	defaultSchedulingLoad   = 0.6
+	defaultSchedulingPUE    = 1.2
+)
+
 func mapAppError(err error) error {
 	if err == nil {
 		return nil

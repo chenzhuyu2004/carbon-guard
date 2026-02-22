@@ -82,7 +82,7 @@ func TestSplitZonesNormalizesAndDropsEmpty(t *testing.T) {
 func TestAnalyzeBestWindowDurationExceedsLookahead(t *testing.T) {
 	provider := &fakeCIProvider{}
 	service := appsvc.New(newProviderAdapter(provider))
-	_, err := service.AnalyzeBestWindow(context.Background(), "DE", 7201, 2)
+	_, err := service.AnalyzeBestWindow(context.Background(), "DE", 7201, 2, "ubuntu", 0.6, 1.2)
 	if err == nil {
 		t.Fatalf("expected error when duration exceeds lookahead")
 	}
@@ -98,7 +98,7 @@ func TestAnalyzeBestWindowCoverageError(t *testing.T) {
 	}
 
 	service := appsvc.New(newProviderAdapter(provider))
-	_, err := service.AnalyzeBestWindow(context.Background(), "DE", 7200, 3)
+	_, err := service.AnalyzeBestWindow(context.Background(), "DE", 7200, 3, "ubuntu", 0.6, 1.2)
 	if err == nil {
 		t.Fatalf("expected coverage error")
 	}

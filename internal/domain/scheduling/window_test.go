@@ -53,3 +53,39 @@ func TestEstimateWindowEmissionsIncompleteWindow(t *testing.T) {
 		t.Fatalf("expected incomplete window when duration exceeds forecast coverage")
 	}
 }
+
+func TestEstimateWindowEmissionsUsesActualTimestampIntervals(t *testing.T) {
+	points := []ForecastPoint{
+		{Timestamp: time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC), CI: 0.2},
+		{Timestamp: time.Date(2026, 1, 1, 10, 30, 0, 0, time.UTC), CI: 0.8},
+	}
+
+	got, ok := EstimateWindowEmissions(points, 3600, "ubuntu", 0.6, 1.2)
+	if !ok {
+		t.Fatalf("EstimateWindowEmissions() reported incomplete window")
+	}
+
+	// runner=ubuntu -> idle=110W, peak=220W, load=0.6 => 176W
+	power := 176.0
+	energyFirst := 1800.0 * power / 1000.0 / 3600.0
+	energySecond := 1800.0 * power / 1000.0 / 3600.0
+	want := energyFirst*1.2*0.2 + energySecond*1.2*0.8
+
+	if math.Abs(got-want) > 1e-9 {
+		t.Fatalf("EstimateWindowEmissions() = %.12f, expected %.12f", got, want)
+	}
+}
+
+func TestForecastCoverageSecondsUsesTimestampSpacing(t *testing.T) {
+	points := []ForecastPoint{
+		{Timestamp: time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC), CI: 0.3},
+		{Timestamp: time.Date(2026, 1, 1, 10, 30, 0, 0, time.UTC), CI: 0.4},
+		{Timestamp: time.Date(2026, 1, 1, 11, 30, 0, 0, time.UTC), CI: 0.5},
+	}
+
+	got := ForecastCoverageSeconds(points)
+	want := 1800 + 3600 + 3600
+	if got != want {
+		t.Fatalf("ForecastCoverageSeconds() = %d, expected %d", got, want)
+	}
+}

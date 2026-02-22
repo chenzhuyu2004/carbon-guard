@@ -49,6 +49,9 @@ func suggest(args []string) error {
 		Duration:  *duration,
 		Threshold: *threshold,
 		Lookahead: *lookahead,
+		Runner:    defaultSchedulingRunner,
+		Load:      defaultSchedulingLoad,
+		PUE:       defaultSchedulingPUE,
 	})
 	if err != nil {
 		return mapAppError(err)
