@@ -14,6 +14,8 @@ import (
 
 type OptimizeGlobalResult struct {
 	DurationSeconds           int     `json:"duration_seconds"`
+	ZonesSource               string  `json:"zones_source"`
+	ZonesConfidence           string  `json:"zones_confidence"`
 	BestZone                  string  `json:"best_zone"`
 	BestWindowStartUTC        string  `json:"best_window_start_utc"`
 	BestWindowEndUTC          string  `json:"best_window_end_utc"`
@@ -34,6 +36,7 @@ func optimizeGlobal(args []string) error {
 
 	addConfigFlag(fs, defaults.ConfigPath)
 	zones := fs.String("zones", "", "comma-separated Electricity Maps zones")
+	zoneMode := fs.String("zone-mode", "fallback", "zone resolution mode: strict|fallback|auto")
 	duration := fs.Int("duration", 0, "duration in seconds")
 	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")
 	waitCost := fs.Float64("wait-cost", 0, "waiting penalty in kgCO2 per hour")
@@ -50,9 +53,6 @@ func optimizeGlobal(args []string) error {
 		return cgerrors.New(err, cgerrors.InputError)
 	}
 
-	if *zones == "" {
-		return cgerrors.Newf(cgerrors.InputError, "zones is required")
-	}
 	if *duration <= 0 {
 		return cgerrors.Newf(cgerrors.InputError, "duration must be > 0")
 	}
@@ -82,9 +82,9 @@ func optimizeGlobal(args []string) error {
 		resampleMaxFillAge = parsed
 	}
 
-	zoneList := splitZones(*zones)
-	if len(zoneList) == 0 {
-		return cgerrors.Newf(cgerrors.InputError, "zones is required")
+	resolvedZones, err := resolveZones(*zones, *zoneMode)
+	if err != nil {
+		return cgerrors.New(err, cgerrors.InputError)
 	}
 
 	apiKey := os.Getenv("ELECTRICITY_MAPS_API_KEY")
@@ -94,7 +94,7 @@ func optimizeGlobal(args []string) error {
 
 	service := appsvc.New(newProviderAdapter(buildLiveProvider(apiKey, cacheDir, cacheTTL)))
 	out, err := service.OptimizeGlobal(context.Background(), appsvc.OptimizeGlobalInput{
-		Zones:              zoneList,
+		Zones:              resolvedZones.Zones,
 		Duration:           *duration,
 		Lookahead:          *lookahead,
 		WaitCost:           *waitCost,
@@ -110,6 +110,8 @@ func optimizeGlobal(args []string) error {
 	if *outputMode == "json" {
 		payload := OptimizeGlobalResult{
 			DurationSeconds:           *duration,
+			ZonesSource:               resolvedZones.Source,
+			ZonesConfidence:           resolvedZones.Confidence,
 			BestZone:                  out.BestZone,
 			BestWindowStartUTC:        out.BestStart.UTC().Format(time.RFC3339),
 			BestWindowEndUTC:          out.BestEnd.UTC().Format(time.RFC3339),
@@ -129,6 +131,7 @@ func optimizeGlobal(args []string) error {
 
 	fmt.Println("Global optimal execution plan")
 	fmt.Println()
+	fmt.Printf("Resolved Zones Source: %s (confidence: %s)\n", resolvedZones.Source, resolvedZones.Confidence)
 	fmt.Printf("Start (UTC): %s\n", out.BestStart.UTC().Format("15:04"))
 	fmt.Printf("Zone: %s\n", out.BestZone)
 	fmt.Printf("Emission: %.3f kg\n", out.Emission)

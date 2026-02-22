@@ -22,6 +22,7 @@ func runAware(args []string) error {
 
 	addConfigFlag(fs, defaults.ConfigPath)
 	zone := fs.String("zone", "", "electricity maps zone")
+	zoneMode := fs.String("zone-mode", "fallback", "zone resolution mode: strict|fallback|auto")
 	duration := fs.Int("duration", 0, "duration in seconds")
 	threshold := fs.Float64("threshold", 0.35, "legacy CI threshold in kgCO2/kWh (used when threshold-enter/exit are unset)")
 	thresholdEnter := fs.Float64("threshold-enter", -1, "run when CI is <= this threshold in kgCO2/kWh")
@@ -34,9 +35,6 @@ func runAware(args []string) error {
 		return cgerrors.New(err, cgerrors.InputError)
 	}
 
-	if *zone == "" {
-		return cgerrors.Newf(cgerrors.InputError, "zone is required")
-	}
 	if *duration <= 0 {
 		return cgerrors.Newf(cgerrors.InputError, "duration must be > 0")
 	}
@@ -64,6 +62,10 @@ func runAware(args []string) error {
 	if effectiveEnter > effectiveExit {
 		return cgerrors.Newf(cgerrors.InputError, "threshold-enter must be <= threshold-exit")
 	}
+	resolvedZone, err := resolveZone(*zone, *zoneMode)
+	if err != nil {
+		return cgerrors.New(err, cgerrors.InputError)
+	}
 
 	cacheDir, cacheTTL, err := parseCacheConfig(*cacheDirRaw, *cacheTTLRaw)
 	if err != nil {
@@ -77,7 +79,7 @@ func runAware(args []string) error {
 
 	service := appsvc.New(newProviderAdapter(buildLiveProvider(apiKey, cacheDir, cacheTTL)))
 	out, err := service.RunAware(context.Background(), appsvc.RunAwareInput{
-		Zone:           *zone,
+		Zone:           resolvedZone.Zone,
 		Duration:       *duration,
 		Threshold:      *threshold,
 		ThresholdEnter: effectiveEnter,
@@ -93,6 +95,7 @@ func runAware(args []string) error {
 	if err != nil {
 		return mapAppError(err)
 	}
+	fmt.Printf("Resolved Zone: %s (source: %s, confidence: %s)\n", resolvedZone.Zone, resolvedZone.Source, resolvedZone.Confidence)
 	fmt.Println(out.Message)
 	return nil
 }

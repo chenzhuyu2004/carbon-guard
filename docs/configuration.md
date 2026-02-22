@@ -26,6 +26,8 @@ These apply to `suggest`, `run-aware`, `optimize`, and `optimize-global`.
 | `CARBON_GUARD_CACHE_TTL` | Default cache TTL (Go duration). |
 | `CARBON_GUARD_TIMEOUT` | Default timeout (Go duration). |
 | `CARBON_GUARD_OUTPUT` | Default output mode (`text` or `json`). |
+| `CARBON_GUARD_ZONE` | Default single zone fallback for `suggest` / `run-aware`. |
+| `CARBON_GUARD_ZONES` | Default zone list fallback for `optimize` / `optimize-global`. |
 
 ## Config File (JSON)
 
@@ -72,6 +74,27 @@ Commands using forecast data support:
 - `--threshold-exit`
 
 If both are unset, `--threshold` (legacy flag) is used for backward compatibility.
+
+## Zone Resolution Strategy
+
+Commands with zone inputs support:
+
+- `--zone-mode strict|fallback|auto` (default: `fallback`)
+
+Behavior:
+
+1. `strict`: zone(s) must be provided via CLI (`--zone` / `--zones`).
+2. `fallback`: if CLI zone flags are empty, commands use `CARBON_GUARD_ZONE` / `CARBON_GUARD_ZONES`.
+3. `auto`: run fallback first, then attempt locale/timezone inference using `LC_ALL`, `LC_MESSAGES`, `LANG`, and `TZ`.
+
+Examples:
+
+```bash
+CARBON_GUARD_ZONE=DE carbon-guard suggest --duration 1200
+CARBON_GUARD_ZONES=DE,FR carbon-guard optimize --duration 1800
+carbon-guard run-aware --zone-mode strict --zone US-NY --duration 900
+LANG=de_DE.UTF-8 carbon-guard suggest --zone-mode auto --duration 900
+```
 
 Example:
 
