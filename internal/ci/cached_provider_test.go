@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 )
@@ -101,5 +102,61 @@ func TestCachedProviderRespectsContextCancellation(t *testing.T) {
 	}
 	if inner.forecastCalls != 0 {
 		t.Fatalf("inner provider should not be called when context canceled")
+	}
+}
+
+type blockingInnerProvider struct {
+	mu            sync.Mutex
+	forecastCalls int
+	release       chan struct{}
+}
+
+func (b *blockingInnerProvider) GetCurrentCI(_ context.Context, _ string) (float64, error) {
+	return 0.4, nil
+}
+
+func (b *blockingInnerProvider) GetForecastCI(_ context.Context, _ string, _ int) ([]ForecastPoint, error) {
+	b.mu.Lock()
+	b.forecastCalls++
+	b.mu.Unlock()
+	<-b.release
+	return []ForecastPoint{{Timestamp: time.Now().UTC().Add(time.Minute), CI: 0.4}}, nil
+}
+
+func TestCachedProviderDeduplicatesConcurrentMisses(t *testing.T) {
+	inner := &blockingInnerProvider{release: make(chan struct{})}
+	provider := &CachedProvider{
+		Inner:    inner,
+		CacheDir: t.TempDir(),
+		TTL:      10 * time.Minute,
+	}
+
+	var wg sync.WaitGroup
+	errCh := make(chan error, 2)
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := provider.GetForecastCI(context.Background(), "DE", 2)
+			errCh <- err
+		}()
+	}
+
+	time.Sleep(10 * time.Millisecond)
+	close(inner.release)
+	wg.Wait()
+	close(errCh)
+
+	for err := range errCh {
+		if err != nil {
+			t.Fatalf("GetForecastCI() returned error: %v", err)
+		}
+	}
+
+	inner.mu.Lock()
+	calls := inner.forecastCalls
+	inner.mu.Unlock()
+	if calls != 1 {
+		t.Fatalf("inner forecast calls = %d, expected 1", calls)
 	}
 }

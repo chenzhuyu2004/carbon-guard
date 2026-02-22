@@ -42,11 +42,13 @@ func TestCalculateEmissionsUsesLiveCIProvider(t *testing.T) {
 
 	got, err := service.Run(context.Background(), appsvc.RunInput{
 		Duration: 300,
-		Runner:   "ubuntu",
 		Region:   "eu",
-		Load:     0.6,
-		PUE:      1.2,
 		LiveZone: "DE",
+		Model: appsvc.ModelContext{
+			Runner: "ubuntu",
+			Load:   0.6,
+			PUE:    1.2,
+		},
 	})
 	if err != nil {
 		t.Fatalf("Run() unexpected error: %v", err)
@@ -82,7 +84,11 @@ func TestSplitZonesNormalizesAndDropsEmpty(t *testing.T) {
 func TestAnalyzeBestWindowDurationExceedsLookahead(t *testing.T) {
 	provider := &fakeCIProvider{}
 	service := appsvc.New(newProviderAdapter(provider))
-	_, err := service.AnalyzeBestWindow(context.Background(), "DE", 7201, 2, "ubuntu", 0.6, 1.2)
+	_, err := service.AnalyzeBestWindow(context.Background(), "DE", 7201, 2, appsvc.ModelContext{
+		Runner: "ubuntu",
+		Load:   0.6,
+		PUE:    1.2,
+	})
 	if err == nil {
 		t.Fatalf("expected error when duration exceeds lookahead")
 	}
@@ -98,7 +104,11 @@ func TestAnalyzeBestWindowCoverageError(t *testing.T) {
 	}
 
 	service := appsvc.New(newProviderAdapter(provider))
-	_, err := service.AnalyzeBestWindow(context.Background(), "DE", 7200, 3, "ubuntu", 0.6, 1.2)
+	_, err := service.AnalyzeBestWindow(context.Background(), "DE", 7200, 3, appsvc.ModelContext{
+		Runner: "ubuntu",
+		Load:   0.6,
+		PUE:    1.2,
+	})
 	if err == nil {
 		t.Fatalf("expected coverage error")
 	}

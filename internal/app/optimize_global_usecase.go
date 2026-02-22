@@ -23,17 +23,15 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 	if in.Lookahead <= 0 {
 		return OptimizeGlobalOutput{}, fmt.Errorf("%w: lookahead must be > 0", ErrInput)
 	}
-	if in.Load < 0 || in.Load > 1 {
-		return OptimizeGlobalOutput{}, fmt.Errorf("%w: load must be between 0 and 1", ErrInput)
-	}
-	if in.PUE < 1.0 {
-		return OptimizeGlobalOutput{}, fmt.Errorf("%w: pue must be >= 1.0", ErrInput)
-	}
 	if in.Duration > in.Lookahead*3600 {
 		return OptimizeGlobalOutput{}, fmt.Errorf("%w: duration %ds exceeds forecast coverage %ds", ErrInput, in.Duration, in.Lookahead*3600)
 	}
 	if in.Timeout <= 0 {
 		return OptimizeGlobalOutput{}, fmt.Errorf("%w: timeout must be > 0", ErrInput)
+	}
+	model, err := normalizeModel(in.Model)
+	if err != nil {
+		return OptimizeGlobalOutput{}, err
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, in.Timeout)
@@ -109,7 +107,7 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 				continue
 			}
 
-			emission, ok := scheduling.EstimateWindowEmissions(zoneForecasts[zone][index:], in.Duration, in.Runner, in.Load, in.PUE)
+			emission, ok := scheduling.EstimateWindowEmissions(zoneForecasts[zone][index:], in.Duration, model.Runner, model.Load, model.PUE)
 			if !ok {
 				continue
 			}

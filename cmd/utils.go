@@ -10,6 +10,7 @@ import (
 	"time"
 
 	appsvc "github.com/chenzhuyu2004/carbon-guard/internal/app"
+	"github.com/chenzhuyu2004/carbon-guard/internal/ci"
 	cgerrors "github.com/chenzhuyu2004/carbon-guard/internal/errors"
 )
 
@@ -17,6 +18,16 @@ const (
 	defaultSchedulingRunner = "ubuntu"
 	defaultSchedulingLoad   = 0.6
 	defaultSchedulingPUE    = 1.2
+
+	defaultProviderTimeout = 10 * time.Second
+
+	defaultProviderRetryMaxAttempts = 3
+	defaultProviderRetryBaseDelay   = 200 * time.Millisecond
+	defaultProviderRetryMaxDelay    = 2 * time.Second
+	defaultProviderRetryJitter      = 0.2
+
+	defaultProviderRPS   = 5.0
+	defaultProviderBurst = 2
 )
 
 func mapAppError(err error) error {
@@ -53,6 +64,33 @@ func splitZones(raw string) []string {
 		zones = append(zones, zone)
 	}
 	return zones
+}
+
+func defaultModelContext() appsvc.ModelContext {
+	return appsvc.ModelContext{
+		Runner: defaultSchedulingRunner,
+		Load:   defaultSchedulingLoad,
+		PUE:    defaultSchedulingPUE,
+	}
+}
+
+func buildLiveProvider(apiKey string, cacheDir string, cacheTTL time.Duration) ci.Provider {
+	return ci.NewPipeline(&ci.ElectricityMapsProvider{APIKey: apiKey}, ci.PipelineConfig{
+		Timeout: defaultProviderTimeout,
+		Retry: ci.RetryConfig{
+			MaxAttempts: defaultProviderRetryMaxAttempts,
+			BaseDelay:   defaultProviderRetryBaseDelay,
+			MaxDelay:    defaultProviderRetryMaxDelay,
+			Jitter:      defaultProviderRetryJitter,
+		},
+		RateLimit: ci.RateLimitConfig{
+			RequestsPerSecond: defaultProviderRPS,
+			Burst:             defaultProviderBurst,
+		},
+		CacheDir: cacheDir,
+		CacheTTL: cacheTTL,
+		Metrics:  ci.NopMetricsRecorder{},
+	})
 }
 
 func parseCacheConfig(cacheDirRaw string, cacheTTLRaw string) (string, time.Duration, error) {

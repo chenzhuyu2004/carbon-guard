@@ -7,7 +7,6 @@ import (
 	"os"
 
 	appsvc "github.com/chenzhuyu2004/carbon-guard/internal/app"
-	"github.com/chenzhuyu2004/carbon-guard/internal/ci"
 	cgerrors "github.com/chenzhuyu2004/carbon-guard/internal/errors"
 	"github.com/chenzhuyu2004/carbon-guard/internal/report"
 )
@@ -41,23 +40,25 @@ func run(args []string) error {
 		return cgerrors.Newf(cgerrors.InputError, "fail-on-budget requires budget-kg > 0")
 	}
 
-	var provider ci.Provider
+	var provider appsvc.Provider
 	if *liveZone != "" {
 		apiKey := os.Getenv("ELECTRICITY_MAPS_API_KEY")
 		if apiKey == "" {
 			return cgerrors.Newf(cgerrors.InputError, "missing ELECTRICITY_MAPS_API_KEY")
 		}
-		provider = &ci.ElectricityMapsProvider{APIKey: apiKey}
+		provider = newProviderAdapter(buildLiveProvider(apiKey, "", 0))
 	}
-	service := appsvc.New(newProviderAdapter(provider))
+	service := appsvc.New(provider)
 	result, err := service.Run(context.Background(), appsvc.RunInput{
 		Duration:    *duration,
-		Runner:      *runner,
 		Region:      *region,
-		Load:        *load,
-		PUE:         *pue,
 		SegmentsRaw: *segmentsStr,
 		LiveZone:    *liveZone,
+		Model: appsvc.ModelContext{
+			Runner: *runner,
+			Load:   *load,
+			PUE:    *pue,
+		},
 	})
 	if err != nil {
 		return mapAppError(err)

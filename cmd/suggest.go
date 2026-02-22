@@ -7,7 +7,6 @@ import (
 	"os"
 
 	appsvc "github.com/chenzhuyu2004/carbon-guard/internal/app"
-	"github.com/chenzhuyu2004/carbon-guard/internal/ci"
 	cgerrors "github.com/chenzhuyu2004/carbon-guard/internal/errors"
 )
 
@@ -42,16 +41,13 @@ func suggest(args []string) error {
 		return cgerrors.Newf(cgerrors.InputError, "missing ELECTRICITY_MAPS_API_KEY")
 	}
 
-	provider := &ci.ElectricityMapsProvider{APIKey: apiKey}
-	service := appsvc.New(newProviderAdapter(provider))
+	service := appsvc.New(newProviderAdapter(buildLiveProvider(apiKey, "", 0)))
 	out, err := service.Suggest(context.Background(), appsvc.SuggestInput{
 		Zone:      *zone,
 		Duration:  *duration,
 		Threshold: *threshold,
 		Lookahead: *lookahead,
-		Runner:    defaultSchedulingRunner,
-		Load:      defaultSchedulingLoad,
-		PUE:       defaultSchedulingPUE,
+		Model:     defaultModelContext(),
 	})
 	if err != nil {
 		return mapAppError(err)
