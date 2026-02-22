@@ -22,19 +22,19 @@ func (a *App) AnalyzeBestWindow(
 	if zone == "" {
 		return SuggestionAnalysis{}, fmt.Errorf("%w: zone is required", ErrInput)
 	}
-	if duration <= 0 {
-		return SuggestionAnalysis{}, fmt.Errorf("%w: duration must be > 0", ErrInput)
+	if err := validateDurationSeconds(duration); err != nil {
+		return SuggestionAnalysis{}, err
 	}
-	if lookahead <= 0 {
-		return SuggestionAnalysis{}, fmt.Errorf("%w: lookahead must be > 0", ErrInput)
+	if err := validateLookaheadHours(lookahead); err != nil {
+		return SuggestionAnalysis{}, err
 	}
 	var err error
 	model, err = normalizeModel(model)
 	if err != nil {
 		return SuggestionAnalysis{}, err
 	}
-	if duration > lookahead*3600 {
-		return SuggestionAnalysis{}, fmt.Errorf("%w: duration %ds exceeds lookahead window %ds", ErrInput, duration, lookahead*3600)
+	if err := validateDurationWithinLookahead(duration, lookahead); err != nil {
+		return SuggestionAnalysis{}, err
 	}
 
 	requestStart := time.Now().UTC()
@@ -96,14 +96,17 @@ func (a *App) Suggest(ctx context.Context, in SuggestInput) (SuggestOutput, erro
 	if in.Zone == "" {
 		return SuggestOutput{}, fmt.Errorf("%w: zone is required", ErrInput)
 	}
-	if in.Duration <= 0 {
-		return SuggestOutput{}, fmt.Errorf("%w: duration must be > 0", ErrInput)
+	if err := validateDurationSeconds(in.Duration); err != nil {
+		return SuggestOutput{}, err
 	}
 	if in.Threshold <= 0 {
 		return SuggestOutput{}, fmt.Errorf("%w: threshold must be > 0", ErrInput)
 	}
-	if in.Lookahead <= 0 {
-		return SuggestOutput{}, fmt.Errorf("%w: lookahead must be > 0", ErrInput)
+	if err := validateLookaheadHours(in.Lookahead); err != nil {
+		return SuggestOutput{}, err
+	}
+	if err := validateDurationWithinLookahead(in.Duration, in.Lookahead); err != nil {
+		return SuggestOutput{}, err
 	}
 	model, err := normalizeModel(in.Model)
 	if err != nil {

@@ -128,3 +128,24 @@ func TestRunBudgetExceededReturnsDedicatedCode(t *testing.T) {
 		t.Fatalf("error code = %d, expected %d", code, cgerrors.BudgetExceeded)
 	}
 }
+
+func TestDetectJSONOutputRun(t *testing.T) {
+	if !detectJSONOutput("run", []string{"--duration", "300", "--json"}) {
+		t.Fatalf("expected run output mode to detect json")
+	}
+	if detectJSONOutput("run", []string{"--duration", "300", "--json=false"}) {
+		t.Fatalf("expected run output mode to detect non-json when json=false")
+	}
+}
+
+func TestDetectJSONOutputOptimize(t *testing.T) {
+	if !detectJSONOutput("optimize", []string{"--zones", "DE,FR", "--duration", "300", "--output=json"}) {
+		t.Fatalf("expected optimize output mode to detect json with equals syntax")
+	}
+	if !detectJSONOutput("optimize-global", []string{"--zones", "DE,FR", "--duration", "300", "--output", "json"}) {
+		t.Fatalf("expected optimize-global output mode to detect json with split syntax")
+	}
+	if detectJSONOutput("optimize", []string{"--zones", "DE,FR", "--duration", "300", "--output", "text"}) {
+		t.Fatalf("expected optimize output mode to detect text")
+	}
+}

@@ -12,17 +12,17 @@ func (a *App) Optimize(ctx context.Context, in OptimizeInput) (OptimizeOutput, e
 	if a == nil || a.provider == nil {
 		return OptimizeOutput{}, fmt.Errorf("%w: provider is not configured", ErrProvider)
 	}
-	if len(in.Zones) == 0 {
-		return OptimizeOutput{}, fmt.Errorf("%w: zones is required", ErrInput)
+	if err := validateZones(in.Zones); err != nil {
+		return OptimizeOutput{}, err
 	}
-	if in.Duration <= 0 {
-		return OptimizeOutput{}, fmt.Errorf("%w: duration must be > 0", ErrInput)
+	if err := validateDurationSeconds(in.Duration); err != nil {
+		return OptimizeOutput{}, err
 	}
-	if in.Lookahead <= 0 {
-		return OptimizeOutput{}, fmt.Errorf("%w: lookahead must be > 0", ErrInput)
+	if err := validateLookaheadHours(in.Lookahead); err != nil {
+		return OptimizeOutput{}, err
 	}
-	if in.Duration > in.Lookahead*3600 {
-		return OptimizeOutput{}, fmt.Errorf("%w: duration %ds exceeds forecast coverage %ds", ErrInput, in.Duration, in.Lookahead*3600)
+	if err := validateDurationWithinLookahead(in.Duration, in.Lookahead); err != nil {
+		return OptimizeOutput{}, err
 	}
 	if in.Timeout <= 0 {
 		return OptimizeOutput{}, fmt.Errorf("%w: timeout must be > 0", ErrInput)

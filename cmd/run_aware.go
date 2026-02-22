@@ -20,8 +20,7 @@ func runAware(args []string) error {
 	threshold := fs.Float64("threshold", 0.35, "current CI threshold in kgCO2/kWh")
 	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")
 	maxWait := fs.Float64("max-wait", 6, "maximum wait time in hours")
-	cacheDirRaw := fs.String("cache-dir", "~/.carbon-guard", "forecast cache directory")
-	cacheTTLRaw := fs.String("cache-ttl", "10m", "forecast cache TTL")
+	cacheDirRaw, cacheTTLRaw := addCacheFlags(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
