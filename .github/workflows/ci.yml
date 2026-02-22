@@ -29,6 +29,7 @@ jobs:
       - run: go mod tidy
       - run: go test ./...
       - run: go test -race ./...
+      - run: go vet ./...
       - run: go build -o carbon-guard
 
       - name: Calculate runtime and emissions
@@ -160,15 +161,11 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
-      - name: Record action start time
-        id: start
-        run: echo "start_time=$(($(date +%s)-60))" >> "$GITHUB_OUTPUT"
-
       - name: Run local Carbon Guard action
         id: carbon
         uses: ./
         with:
-          start_time: ${{ steps.start.outputs.start_time }}
+          duration: "60"
           budget_kg: "0.1000"
           baseline_kg: "0.0500"
           fail_on_budget: "false"

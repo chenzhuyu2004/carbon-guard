@@ -56,6 +56,19 @@ carbon-guard run --duration 300 --json
   run: echo "emissions_kg=${{ steps.carbon.outputs.emissions_kg }}"
 ```
 
+Auto runtime detection (no manual start-time step):
+
+```yaml
+permissions:
+  contents: read
+  actions: read
+
+- name: Carbon Guard
+  uses: chenzhuyu2004/carbon-guard@v1
+  with:
+    github_token: ${{ github.token }}
+```
+
 ---
 
 ## Example Output
@@ -94,6 +107,7 @@ cmd/                 CLI parsing and presentation
 internal/app/        use-case orchestration
 internal/domain/     pure scheduling logic
 internal/ci/         Electricity Maps providers + cache
+internal/config/     shared defaults (flags/env/config file)
 docs/                user and maintainer documentation
 .github/workflows/   CI and security automation
 ```

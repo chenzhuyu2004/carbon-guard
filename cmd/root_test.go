@@ -3,6 +3,8 @@ package cmd
 import (
 	"context"
 	"math"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -147,5 +149,26 @@ func TestDetectJSONOutputOptimize(t *testing.T) {
 	}
 	if detectJSONOutput("optimize", []string{"--zones", "DE,FR", "--duration", "300", "--output", "text"}) {
 		t.Fatalf("expected optimize output mode to detect text")
+	}
+}
+
+func TestDetectJSONOutputOptimizeFromEnvDefault(t *testing.T) {
+	t.Setenv("CARBON_GUARD_OUTPUT", "json")
+	t.Setenv("CARBON_GUARD_CONFIG", "")
+	if !detectJSONOutput("optimize", []string{"--zones", "DE", "--duration", "300"}) {
+		t.Fatalf("expected optimize output mode to detect json from env default")
+	}
+}
+
+func TestDetectJSONOutputOptimizeFromConfigFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "carbon-guard.json")
+	content := []byte(`{"output":"json"}`)
+	if err := os.WriteFile(path, content, 0o644); err != nil {
+		t.Fatalf("WriteFile() unexpected error: %v", err)
+	}
+
+	if !detectJSONOutput("optimize-global", []string{"--config", path, "--zones", "DE", "--duration", "300"}) {
+		t.Fatalf("expected optimize-global output mode to detect json from config file")
 	}
 }

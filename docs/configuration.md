@@ -15,12 +15,56 @@
 | `CARBON_BUDGET_KG` | Budget gate threshold used by CI workflow. |
 | `CARBON_BASELINE_KG` | Baseline emissions used for delta reporting. |
 
+### Optional shared CLI defaults
+
+These apply to `suggest`, `run-aware`, `optimize`, and `optimize-global`.
+
+| Variable | Description |
+| --- | --- |
+| `CARBON_GUARD_CONFIG` | Path to JSON config file. |
+| `CARBON_GUARD_CACHE_DIR` | Default cache directory. |
+| `CARBON_GUARD_CACHE_TTL` | Default cache TTL (Go duration). |
+| `CARBON_GUARD_TIMEOUT` | Default timeout (Go duration). |
+| `CARBON_GUARD_OUTPUT` | Default output mode (`text` or `json`). |
+
+## Config File (JSON)
+
+Use `--config <path>` or `CARBON_GUARD_CONFIG`.
+
+Example:
+
+```json
+{
+  "cache_dir": "~/.carbon-guard",
+  "cache_ttl": "15m",
+  "timeout": "45s",
+  "output": "json"
+}
+```
+
+Supported keys:
+
+- `cache_dir`
+- `cache_ttl`
+- `timeout`
+- `output`
+
+## Precedence Rules
+
+Shared defaults resolve in this order:
+
+1. CLI flags
+2. Environment variables
+3. Config file
+4. Built-in defaults
+
 ## Cache Configuration
 
 Commands using forecast data support:
 
 - `--cache-dir` (default: `~/.carbon-guard`)
 - `--cache-ttl` (default: `10m`)
+- `--config` (optional JSON defaults)
 
 Example:
 
@@ -38,6 +82,7 @@ carbon-guard optimize \
 `optimize` and `optimize-global` support:
 
 - `--timeout` (default: `30s`)
+- `--config` (optional JSON defaults)
 
 Example:
 

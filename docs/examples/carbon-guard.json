@@ -1,0 +1,6 @@
+{
+  "cache_dir": "~/.carbon-guard",
+  "cache_ttl": "15m",
+  "timeout": "45s",
+  "output": "json"
+}

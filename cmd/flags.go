@@ -4,19 +4,30 @@ import (
 	"flag"
 	"fmt"
 	"time"
+
+	cgconfig "github.com/chenzhuyu2004/carbon-guard/internal/config"
 )
 
-func addOutputFlag(fs *flag.FlagSet) *string {
-	return fs.String("output", "text", "output format: text|json")
+func resolveSharedDefaults(args []string) (cgconfig.Shared, error) {
+	configPath, _ := parseStringFlag(args, "config")
+	return cgconfig.Resolve(configPath)
 }
 
-func addTimeoutFlag(fs *flag.FlagSet) *string {
-	return fs.String("timeout", "30s", "operation timeout")
+func addConfigFlag(fs *flag.FlagSet, defaultPath string) {
+	fs.String("config", defaultPath, "path to JSON config file")
 }
 
-func addCacheFlags(fs *flag.FlagSet) (*string, *string) {
-	cacheDirRaw := fs.String("cache-dir", "~/.carbon-guard", "forecast cache directory")
-	cacheTTLRaw := fs.String("cache-ttl", "10m", "forecast cache TTL")
+func addOutputFlag(fs *flag.FlagSet, defaultValue string) *string {
+	return fs.String("output", defaultValue, "output format: text|json")
+}
+
+func addTimeoutFlag(fs *flag.FlagSet, defaultValue string) *string {
+	return fs.String("timeout", defaultValue, "operation timeout")
+}
+
+func addCacheFlags(fs *flag.FlagSet, defaultDir string, defaultTTL string) (*string, *string) {
+	cacheDirRaw := fs.String("cache-dir", defaultDir, "forecast cache directory")
+	cacheTTLRaw := fs.String("cache-ttl", defaultTTL, "forecast cache TTL")
 	return cacheDirRaw, cacheTTLRaw
 }
 

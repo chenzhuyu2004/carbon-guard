@@ -11,13 +11,20 @@ import (
 )
 
 func suggest(args []string) error {
+	defaults, err := resolveSharedDefaults(args)
+	if err != nil {
+		return cgerrors.New(err, cgerrors.InputError)
+	}
+
 	fs := flag.NewFlagSet("suggest", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 
+	addConfigFlag(fs, defaults.ConfigPath)
 	zone := fs.String("zone", "", "electricity maps zone")
 	duration := fs.Int("duration", 0, "duration in seconds")
 	threshold := fs.Float64("threshold", 0.35, "current CI threshold in kgCO2/kWh")
 	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")
+	cacheDirRaw, cacheTTLRaw := addCacheFlags(fs, defaults.CacheDir, defaults.CacheTTL)
 
 	if err := fs.Parse(args); err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
@@ -35,13 +42,17 @@ func suggest(args []string) error {
 	if *lookahead <= 0 {
 		return cgerrors.Newf(cgerrors.InputError, "lookahead must be > 0")
 	}
+	cacheDir, cacheTTL, err := parseCacheConfig(*cacheDirRaw, *cacheTTLRaw)
+	if err != nil {
+		return cgerrors.New(err, cgerrors.InputError)
+	}
 
 	apiKey := os.Getenv("ELECTRICITY_MAPS_API_KEY")
 	if apiKey == "" {
 		return cgerrors.Newf(cgerrors.InputError, "missing ELECTRICITY_MAPS_API_KEY")
 	}
 
-	service := appsvc.New(newProviderAdapter(buildLiveProvider(apiKey, "", 0)))
+	service := appsvc.New(newProviderAdapter(buildLiveProvider(apiKey, cacheDir, cacheTTL)))
 	out, err := service.Suggest(context.Background(), appsvc.SuggestInput{
 		Zone:      *zone,
 		Duration:  *duration,

@@ -15,6 +15,7 @@ This is the canonical documentation hub for Carbon Guard.
 ## Configuration & Runtime
 
 - [`configuration.md`](configuration.md): environment variables, cache, timeouts, budgets.
+- [`examples/carbon-guard.json`](examples/carbon-guard.json): sample shared config file.
 - [`troubleshooting.md`](troubleshooting.md): common failures and fixes.
 - [`faq.md`](faq.md): design decisions and usage FAQs.
 

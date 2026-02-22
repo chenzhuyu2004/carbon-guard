@@ -12,15 +12,21 @@ import (
 )
 
 func runAware(args []string) error {
+	defaults, err := resolveSharedDefaults(args)
+	if err != nil {
+		return cgerrors.New(err, cgerrors.InputError)
+	}
+
 	fs := flag.NewFlagSet("run-aware", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 
+	addConfigFlag(fs, defaults.ConfigPath)
 	zone := fs.String("zone", "", "electricity maps zone")
 	duration := fs.Int("duration", 0, "duration in seconds")
 	threshold := fs.Float64("threshold", 0.35, "current CI threshold in kgCO2/kWh")
 	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")
 	maxWait := fs.Float64("max-wait", 6, "maximum wait time in hours")
-	cacheDirRaw, cacheTTLRaw := addCacheFlags(fs)
+	cacheDirRaw, cacheTTLRaw := addCacheFlags(fs, defaults.CacheDir, defaults.CacheTTL)
 
 	if err := fs.Parse(args); err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
