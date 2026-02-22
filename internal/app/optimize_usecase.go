@@ -24,6 +24,9 @@ func (a *App) Optimize(ctx context.Context, in OptimizeInput) (OptimizeOutput, e
 	if err := validateDurationWithinLookahead(in.Duration, in.Lookahead); err != nil {
 		return OptimizeOutput{}, err
 	}
+	if err := validateWaitCost(in.WaitCost); err != nil {
+		return OptimizeOutput{}, err
+	}
 	if in.Timeout <= 0 {
 		return OptimizeOutput{}, fmt.Errorf("%w: timeout must be > 0", ErrInput)
 	}
@@ -50,7 +53,7 @@ func (a *App) Optimize(ctx context.Context, in OptimizeInput) (OptimizeOutput, e
 		go func() {
 			defer wg.Done()
 
-			analysis, err := a.AnalyzeBestWindow(ctx, zone, in.Duration, in.Lookahead, model)
+			analysis, err := a.AnalyzeBestWindow(ctx, zone, in.Duration, in.Lookahead, model, in.WaitCost)
 			if err != nil {
 				outcomeCh <- zoneOutcome{zone: zone, err: err}
 				return
@@ -61,6 +64,7 @@ func (a *App) Optimize(ctx context.Context, in OptimizeInput) (OptimizeOutput, e
 				result: ZoneResult{
 					Zone:      zone,
 					Emission:  analysis.BestEmission,
+					Score:     analysis.BestScore,
 					BestStart: analysis.BestStart.UTC(),
 					BestEnd:   analysis.BestEnd.UTC(),
 				},
@@ -110,14 +114,17 @@ func (a *App) Optimize(ctx context.Context, in OptimizeInput) (OptimizeOutput, e
 	}
 
 	sort.Slice(results, func(i, j int) bool {
-		return results[i].Emission < results[j].Emission
+		if results[i].Score == results[j].Score {
+			return results[i].Emission < results[j].Emission
+		}
+		return results[i].Score < results[j].Score
 	})
 
 	best := results[0]
 	worst := results[len(results)-1]
 	reduction := 0.0
-	if worst.Emission > 0 {
-		reduction = (worst.Emission - best.Emission) / worst.Emission * 100
+	if worst.Score > 0 {
+		reduction = (worst.Score - best.Score) / worst.Score * 100
 	}
 
 	return OptimizeOutput{

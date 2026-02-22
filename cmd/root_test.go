@@ -90,7 +90,7 @@ func TestAnalyzeBestWindowDurationExceedsLookahead(t *testing.T) {
 		Runner: "ubuntu",
 		Load:   0.6,
 		PUE:    1.2,
-	})
+	}, 0)
 	if err == nil {
 		t.Fatalf("expected error when duration exceeds lookahead")
 	}
@@ -110,7 +110,7 @@ func TestAnalyzeBestWindowCoverageError(t *testing.T) {
 		Runner: "ubuntu",
 		Load:   0.6,
 		PUE:    1.2,
-	})
+	}, 0)
 	if err == nil {
 		t.Fatalf("expected coverage error")
 	}

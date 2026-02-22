@@ -34,6 +34,7 @@ func optimizeGlobal(args []string) error {
 	zones := fs.String("zones", "", "comma-separated Electricity Maps zones")
 	duration := fs.Int("duration", 0, "duration in seconds")
 	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")
+	waitCost := fs.Float64("wait-cost", 0, "waiting penalty in kgCO2 per hour")
 	timeoutStr := addTimeoutFlag(fs, defaults.Timeout)
 	outputMode := addOutputFlag(fs, defaults.Output)
 	cacheDirRaw, cacheTTLRaw := addCacheFlags(fs, defaults.CacheDir, defaults.CacheTTL)
@@ -65,6 +66,9 @@ func optimizeGlobal(args []string) error {
 	if *duration > *lookahead*3600 {
 		return cgerrors.Newf(cgerrors.InputError, "duration %ds exceeds forecast coverage %ds", *duration, *lookahead*3600)
 	}
+	if *waitCost < 0 {
+		return cgerrors.Newf(cgerrors.InputError, "wait-cost must be >= 0")
+	}
 
 	zoneList := splitZones(*zones)
 	if len(zoneList) == 0 {
@@ -81,6 +85,7 @@ func optimizeGlobal(args []string) error {
 		Zones:     zoneList,
 		Duration:  *duration,
 		Lookahead: *lookahead,
+		WaitCost:  *waitCost,
 		Model:     defaultModelContext(),
 		Timeout:   timeout,
 	})

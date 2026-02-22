@@ -97,6 +97,18 @@ Example:
 carbon-guard optimize --zones DE,FR --duration 1200 --timeout 45s
 ```
 
+## Scheduling Objective
+
+`suggest`, `optimize`, and `optimize-global` support:
+
+- `--wait-cost` (default: `0`)
+
+Unit is `kgCO2/hour`. The optimizer minimizes:
+
+`score = emission_kg + wait_cost * wait_hours`
+
+Setting `--wait-cost 0` keeps pure-emission optimization behavior.
+
 ## Budget/Baseline Conventions
 
 - Keep budgets in `kgCO2`.

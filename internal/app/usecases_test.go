@@ -60,9 +60,87 @@ func TestAnalyzeBestWindowNoForecastReturnsErrNoValidWindow(t *testing.T) {
 		Runner: "ubuntu",
 		Load:   0.6,
 		PUE:    1.2,
-	})
+	}, 0)
 	if !errors.Is(err, ErrNoValidWindow) {
 		t.Fatalf("expected ErrNoValidWindow, got %v", err)
+	}
+}
+
+func TestAnalyzeBestWindowWaitCostChangesBestWindow(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second).Add(10 * time.Minute)
+	a := New(&fakeProvider{
+		forecastByZone: map[string][]scheduling.ForecastPoint{
+			"DE": {
+				{Timestamp: now, CI: 0.8},
+				{Timestamp: now.Add(time.Hour), CI: 0.1},
+				{Timestamp: now.Add(2 * time.Hour), CI: 0.1},
+			},
+		},
+	})
+
+	model := ModelContext{
+		Runner: "ubuntu",
+		Load:   0.6,
+		PUE:    1.2,
+	}
+
+	withoutWaitCost, err := a.AnalyzeBestWindow(context.Background(), "DE", 3600, 4, model, 0)
+	if err != nil {
+		t.Fatalf("AnalyzeBestWindow() unexpected error without wait-cost: %v", err)
+	}
+	if !withoutWaitCost.BestStart.Equal(now.Add(time.Hour)) {
+		t.Fatalf("best start without wait-cost = %s, expected %s", withoutWaitCost.BestStart, now.Add(time.Hour))
+	}
+
+	withWaitCost, err := a.AnalyzeBestWindow(context.Background(), "DE", 3600, 4, model, 0.2)
+	if err != nil {
+		t.Fatalf("AnalyzeBestWindow() unexpected error with wait-cost: %v", err)
+	}
+	if !withWaitCost.BestStart.Equal(now) {
+		t.Fatalf("best start with wait-cost = %s, expected %s", withWaitCost.BestStart, now)
+	}
+}
+
+func TestOptimizeUsesScoreWhenWaitCostProvided(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second).Add(10 * time.Minute)
+	a := New(&fakeProvider{
+		forecastByZone: map[string][]scheduling.ForecastPoint{
+			"DE": {
+				{Timestamp: now, CI: 0.8},
+				{Timestamp: now.Add(time.Hour), CI: 0.1},
+				{Timestamp: now.Add(2 * time.Hour), CI: 0.1},
+			},
+			"FR": {
+				{Timestamp: now, CI: 0.4},
+				{Timestamp: now.Add(time.Hour), CI: 0.4},
+				{Timestamp: now.Add(2 * time.Hour), CI: 0.4},
+			},
+		},
+	})
+
+	out, err := a.Optimize(context.Background(), OptimizeInput{
+		Zones:     []string{"DE", "FR"},
+		Duration:  3600,
+		Lookahead: 4,
+		WaitCost:  0.2,
+		Model: ModelContext{
+			Runner: "ubuntu",
+			Load:   0.6,
+			PUE:    1.2,
+		},
+		Timeout: time.Second,
+	})
+	if err != nil {
+		t.Fatalf("Optimize() unexpected error: %v", err)
+	}
+	if len(out.Results) != 2 {
+		t.Fatalf("results length = %d, expected 2", len(out.Results))
+	}
+	if out.Best.Zone != "FR" {
+		t.Fatalf("best zone = %s, expected FR", out.Best.Zone)
+	}
+	if out.Results[0].Score > out.Results[1].Score {
+		t.Fatalf("results are not sorted by score ascending")
 	}
 }
 

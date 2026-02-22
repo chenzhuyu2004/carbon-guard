@@ -29,6 +29,7 @@ type SuggestInput struct {
 	Duration  int
 	Threshold float64
 	Lookahead int
+	WaitCost  float64
 	Model     ModelContext
 }
 
@@ -44,9 +45,11 @@ type SuggestionAnalysis struct {
 	CurrentEmission float64
 	CurrentStart    time.Time
 	CurrentEnd      time.Time
+	CurrentScore    float64
 	BestStart       time.Time
 	BestEnd         time.Time
 	BestEmission    float64
+	BestScore       float64
 	Reduction       float64
 }
 
@@ -70,6 +73,7 @@ type RunAwareOutput struct {
 type ZoneResult struct {
 	Zone      string
 	Emission  float64
+	Score     float64
 	BestStart time.Time
 	BestEnd   time.Time
 }
@@ -78,6 +82,7 @@ type OptimizeInput struct {
 	Zones     []string
 	Duration  int
 	Lookahead int
+	WaitCost  float64
 	Model     ModelContext
 	Timeout   time.Duration
 }
@@ -94,6 +99,7 @@ type OptimizeGlobalInput struct {
 	Zones     []string
 	Duration  int
 	Lookahead int
+	WaitCost  float64
 	Model     ModelContext
 	Timeout   time.Duration
 }
