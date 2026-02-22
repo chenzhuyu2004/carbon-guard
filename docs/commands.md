@@ -8,6 +8,9 @@ This page is the authoritative reference for all commands.
 - Use `--output text|json` on `optimize` and `optimize-global`.
 - Commands using live carbon data require `ELECTRICITY_MAPS_API_KEY`.
 - Shared defaults can be injected via config/env for `suggest`, `run-aware`, `optimize`, and `optimize-global`.
+- Zone resolution supports `--zone-mode strict|fallback`:
+  - `strict`: zone(s) must be passed via CLI flag.
+  - `fallback`: if CLI flag is empty, fallback to `CARBON_GUARD_ZONE` / `CARBON_GUARD_ZONES`.
 
 ## `run`
 
@@ -53,14 +56,15 @@ Recommend a lower-carbon execution window for one zone.
 ### Syntax
 
 ```bash
-carbon-guard suggest --zone <ZONE> --duration <seconds> [flags]
+carbon-guard suggest --duration <seconds> [--zone <ZONE>] [flags]
 ```
 
 ### Flags
 
 | Flag | Type | Default | Required | Description |
 | --- | --- | --- | --- | --- |
-| `--zone` | string | `""` | Yes | Electricity Maps zone (for example `DE`). |
+| `--zone` | string | `""` | No | Electricity Maps zone (for example `DE`). Required when `--zone-mode strict` or env fallback is not set. |
+| `--zone-mode` | string | `fallback` | No | Zone resolution mode: `strict` or `fallback`. |
 | `--duration` | int | `0` | Yes | Runtime in seconds. |
 | `--threshold` | float | `0.35` | No | Current CI threshold (`kgCO2/kWh`). |
 | `--lookahead` | int | `6` | No | Forecast lookahead in hours. |
@@ -76,14 +80,15 @@ Wait for greener conditions before running.
 ### Syntax
 
 ```bash
-carbon-guard run-aware --zone <ZONE> --duration <seconds> [flags]
+carbon-guard run-aware --duration <seconds> [--zone <ZONE>] [flags]
 ```
 
 ### Flags
 
 | Flag | Type | Default | Required | Description |
 | --- | --- | --- | --- | --- |
-| `--zone` | string | `""` | Yes | Electricity Maps zone. |
+| `--zone` | string | `""` | No | Electricity Maps zone. Required when `--zone-mode strict` or env fallback is not set. |
+| `--zone-mode` | string | `fallback` | No | Zone resolution mode: `strict` or `fallback`. |
 | `--duration` | int | `0` | Yes | Runtime in seconds. |
 | `--threshold` | float | `0.35` | No | Legacy threshold used when `--threshold-enter/--threshold-exit` are unset. |
 | `--threshold-enter` | float | `-1` | No | Run when current CI is `<= threshold-enter` (`kgCO2/kWh`). |
@@ -101,14 +106,15 @@ Compare multiple zones and rank by expected emission.
 ### Syntax
 
 ```bash
-carbon-guard optimize --zones <Z1,Z2,...> --duration <seconds> [flags]
+carbon-guard optimize --duration <seconds> [--zones <Z1,Z2,...>] [flags]
 ```
 
 ### Flags
 
 | Flag | Type | Default | Required | Description |
 | --- | --- | --- | --- | --- |
-| `--zones` | string | `""` | Yes | Comma-separated zones, whitespace-safe. |
+| `--zones` | string | `""` | No | Comma-separated zones, whitespace-safe. Required when `--zone-mode strict` or env fallback is not set. |
+| `--zone-mode` | string | `fallback` | No | Zone resolution mode: `strict` or `fallback`. |
 | `--duration` | int | `0` | Yes | Runtime in seconds. |
 | `--lookahead` | int | `6` | No | Forecast lookahead in hours. |
 | `--wait-cost` | float | `0` | No | Waiting penalty (`kgCO2/hour`) used in zone ranking objective. |
@@ -125,7 +131,7 @@ Find the globally optimal `(time, zone)` over shared forecast timestamps.
 ### Syntax
 
 ```bash
-carbon-guard optimize-global --zones <Z1,Z2,...> --duration <seconds> [flags]
+carbon-guard optimize-global --duration <seconds> [--zones <Z1,Z2,...>] [flags]
 ```
 
 ### Flags

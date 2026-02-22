@@ -22,6 +22,8 @@ type OptimizeZoneOutput struct {
 type OptimizeResult struct {
 	DurationSeconds     int                  `json:"duration_seconds"`
 	Zones               []OptimizeZoneOutput `json:"zones"`
+	ZonesSource         string               `json:"zones_source"`
+	ZonesConfidence     string               `json:"zones_confidence"`
 	BestZone            string               `json:"best_zone"`
 	BestWindowStartUTC  string               `json:"best_window_start_utc"`
 	BestWindowEndUTC    string               `json:"best_window_end_utc"`
@@ -40,6 +42,7 @@ func optimize(args []string) error {
 
 	addConfigFlag(fs, defaults.ConfigPath)
 	zones := fs.String("zones", "", "comma-separated Electricity Maps zones")
+	zoneMode := fs.String("zone-mode", "fallback", "zone resolution mode: strict|fallback")
 	duration := fs.Int("duration", 0, "duration in seconds")
 	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")
 	waitCost := fs.Float64("wait-cost", 0, "waiting penalty in kgCO2 per hour")
@@ -52,9 +55,6 @@ func optimize(args []string) error {
 	}
 	if err := validateOutputMode(*outputMode); err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
-	}
-	if *zones == "" {
-		return cgerrors.Newf(cgerrors.InputError, "zones is required")
 	}
 	if *duration <= 0 {
 		return cgerrors.Newf(cgerrors.InputError, "duration must be > 0")
@@ -76,10 +76,9 @@ func optimize(args []string) error {
 	if err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
 	}
-
-	zoneList := splitZones(*zones)
-	if len(zoneList) == 0 {
-		return cgerrors.Newf(cgerrors.InputError, "zones is required")
+	resolvedZones, err := resolveZones(*zones, *zoneMode)
+	if err != nil {
+		return cgerrors.New(err, cgerrors.InputError)
 	}
 
 	apiKey := os.Getenv("ELECTRICITY_MAPS_API_KEY")
@@ -89,7 +88,7 @@ func optimize(args []string) error {
 
 	service := appsvc.New(newProviderAdapter(buildLiveProvider(apiKey, cacheDir, cacheTTL)))
 	out, err := service.Optimize(context.Background(), appsvc.OptimizeInput{
-		Zones:     zoneList,
+		Zones:     resolvedZones.Zones,
 		Duration:  *duration,
 		Lookahead: *lookahead,
 		WaitCost:  *waitCost,
@@ -120,6 +119,8 @@ func optimize(args []string) error {
 		payload := OptimizeResult{
 			DurationSeconds:     *duration,
 			Zones:               zoneOutputs,
+			ZonesSource:         resolvedZones.Source,
+			ZonesConfidence:     resolvedZones.Confidence,
 			BestZone:            out.Best.Zone,
 			BestWindowStartUTC:  out.Best.BestStart.UTC().Format(time.RFC3339),
 			BestWindowEndUTC:    out.Best.BestEnd.UTC().Format(time.RFC3339),
@@ -135,6 +136,7 @@ func optimize(args []string) error {
 		return nil
 	}
 
+	fmt.Printf("Resolved Zones: %v (source: %s, confidence: %s)\n", resolvedZones.Zones, resolvedZones.Source, resolvedZones.Confidence)
 	fmt.Printf("Zone comparison (duration=%ds):\n\n", *duration)
 	for _, result := range out.Results {
 		fmt.Printf("%s -> %.3f kg\n", result.Zone, result.Emission)
