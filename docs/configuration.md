@@ -29,6 +29,9 @@ These apply to `suggest`, `run-aware`, `optimize`, and `optimize-global`.
 | `CARBON_GUARD_ZONE` | Default single zone fallback for `suggest` / `run-aware`. |
 | `CARBON_GUARD_ZONES` | Default zone list fallback for `optimize` / `optimize-global`. |
 | `CARBON_GUARD_ZONE_MODE` | Default zone resolution mode (`strict`, `fallback`, `auto`). |
+| `CARBON_GUARD_ZONE_HINT` | Auto-mode explicit zone hint (for example `US-NY`). |
+| `CARBON_GUARD_COUNTRY_HINT` | Auto-mode country hint (ISO alpha-2, for example `DE`). |
+| `CARBON_GUARD_TIMEZONE_HINT` | Auto-mode timezone hint (IANA TZ, for example `Europe/Berlin`). |
 
 ## Config File (JSON)
 
@@ -44,7 +47,10 @@ Example:
   "output": "json",
   "zone": "DE",
   "zones": "DE,FR,PL",
-  "zone_mode": "fallback"
+  "zone_mode": "fallback",
+  "zone_hint": "US-NY",
+  "country_hint": "US",
+  "timezone_hint": "America/New_York"
 }
 ```
 
@@ -57,6 +63,9 @@ Supported keys:
 - `zone`
 - `zones`
 - `zone_mode`
+- `zone_hint`
+- `country_hint`
+- `timezone_hint`
 
 ## Precedence Rules
 
@@ -73,6 +82,13 @@ Zone-specific resolution uses:
 2. Environment (`CARBON_GUARD_ZONE` / `CARBON_GUARD_ZONES`)
 3. Config (`zone` / `zones`)
 4. Auto inference (only when `zone_mode=auto`)
+
+Auto-mode hint resolution uses:
+
+1. `zone_hint` / `CARBON_GUARD_ZONE_HINT`
+2. `country_hint` / `CARBON_GUARD_COUNTRY_HINT`
+3. `timezone_hint` / `CARBON_GUARD_TIMEZONE_HINT`
+4. Locale/timezone heuristic (`LC_ALL`, `LC_MESSAGES`, `LANG`, `TZ`)
 
 ## Cache Configuration
 
@@ -108,6 +124,7 @@ CARBON_GUARD_ZONE=DE carbon-guard suggest --duration 1200
 CARBON_GUARD_ZONES=DE,FR carbon-guard optimize --duration 1800
 carbon-guard run-aware --zone-mode strict --zone US-NY --duration 900
 LANG=de_DE.UTF-8 carbon-guard suggest --zone-mode auto --duration 900
+CARBON_GUARD_ZONE_HINT=US-NY carbon-guard suggest --zone-mode auto --duration 900
 ```
 
 Example:

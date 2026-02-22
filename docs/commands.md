@@ -11,7 +11,7 @@ This page is the authoritative reference for all commands.
 - Zone resolution supports `--zone-mode strict|fallback|auto`:
   - `strict`: zone(s) must be passed via CLI flag.
   - `fallback`: if CLI flag is empty, resolve from env (`CARBON_GUARD_ZONE` / `CARBON_GUARD_ZONES`) then config (`zone` / `zones`).
-  - `auto`: fallback behavior plus automatic inference from locale/timezone hints (`LANG` / `LC_*` / `TZ`).
+  - `auto`: fallback behavior plus auto hints (`CARBON_GUARD_ZONE_HINT` / `CARBON_GUARD_COUNTRY_HINT` / `CARBON_GUARD_TIMEZONE_HINT`) and locale/timezone heuristic (`LANG` / `LC_*` / `TZ`).
 
 ## `run`
 
