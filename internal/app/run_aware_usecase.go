@@ -60,7 +60,7 @@ func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, e
 			return RunAwareOutput{}, fmt.Errorf("%w: Max wait exceeded", ErrMaxWaitExceeded)
 		}
 
-		if now.After(bestEnd) {
+		if !now.Before(bestEnd) {
 			return RunAwareOutput{}, fmt.Errorf("%w: Missed optimal window", ErrMissedOptimalWindow)
 		}
 
@@ -77,22 +77,25 @@ func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, e
 			return RunAwareOutput{Message: "CI dropped below threshold-enter, running now"}, nil
 		}
 
+		wait := pollEvery
+		remaining := deadline.Sub(now)
+		if remaining < wait {
+			wait = remaining
+		}
+		if wait <= 0 {
+			return RunAwareOutput{}, fmt.Errorf("%w: Max wait exceeded", ErrMaxWaitExceeded)
+		}
 		if in.StatusFunc != nil {
 			if currentCI >= thresholdExit {
 				in.StatusFunc(fmt.Sprintf("CI too high (%.2f >= %.2f)", currentCI, thresholdExit))
 			} else {
 				in.StatusFunc(fmt.Sprintf("CI in hysteresis band (%.2f < %.2f < %.2f)", thresholdEnter, currentCI, thresholdExit))
 			}
-			in.StatusFunc("Waiting 15m...")
-		}
-
-		wait := pollEvery
-		remaining := deadline.Sub(time.Now().UTC())
-		if remaining < wait {
-			wait = remaining
-		}
-		if wait <= 0 {
-			return RunAwareOutput{}, fmt.Errorf("%w: Max wait exceeded", ErrMaxWaitExceeded)
+			waitSeconds := int(wait.Round(time.Second).Seconds())
+			if waitSeconds < 1 {
+				waitSeconds = 1
+			}
+			in.StatusFunc(fmt.Sprintf("Waiting %ds...", waitSeconds))
 		}
 
 		timer := time.NewTimer(wait)
