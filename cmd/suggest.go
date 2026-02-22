@@ -21,7 +21,7 @@ func suggest(args []string) error {
 
 	addConfigFlag(fs, defaults.ConfigPath)
 	zone := fs.String("zone", "", "electricity maps zone")
-	zoneMode := fs.String("zone-mode", "fallback", "zone resolution mode: strict|fallback|auto")
+	zoneMode := fs.String("zone-mode", defaults.ZoneMode, "zone resolution mode: strict|fallback|auto")
 	duration := fs.Int("duration", 0, "duration in seconds")
 	threshold := fs.Float64("threshold", 0.35, "current CI threshold in kgCO2/kWh")
 	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")
@@ -44,7 +44,7 @@ func suggest(args []string) error {
 	if *waitCost < 0 {
 		return cgerrors.Newf(cgerrors.InputError, "wait-cost must be >= 0")
 	}
-	resolvedZone, err := resolveZone(*zone, *zoneMode)
+	resolvedZone, err := resolveZone(*zone, *zoneMode, defaults.Zone)
 	if err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
 	}
@@ -72,10 +72,12 @@ func suggest(args []string) error {
 	}
 
 	fmt.Printf(
-		"Resolved Zone: %s (source: %s, confidence: %s)\nCurrent CI: %.4f kg/kWh\nBest execution window (UTC): %s - %s\nExpected emission: %.4f kg\nEmission reduction vs now: %.2f %%\n",
+		"Resolved Zone: %s (source: %s, confidence: %s, reason: %s, fallback_used: %t)\nCurrent CI: %.4f kg/kWh\nBest execution window (UTC): %s - %s\nExpected emission: %.4f kg\nEmission reduction vs now: %.2f %%\n",
 		resolvedZone.Zone,
 		resolvedZone.Source,
 		resolvedZone.Confidence,
+		resolvedZone.Reason,
+		resolvedZone.FallbackUsed,
 		out.CurrentCI,
 		out.BestWindowStartUTC.UTC().Format("15:04"),
 		out.BestWindowEndUTC.UTC().Format("15:04"),

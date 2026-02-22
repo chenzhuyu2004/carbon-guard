@@ -22,7 +22,7 @@ func runAware(args []string) error {
 
 	addConfigFlag(fs, defaults.ConfigPath)
 	zone := fs.String("zone", "", "electricity maps zone")
-	zoneMode := fs.String("zone-mode", "fallback", "zone resolution mode: strict|fallback|auto")
+	zoneMode := fs.String("zone-mode", defaults.ZoneMode, "zone resolution mode: strict|fallback|auto")
 	duration := fs.Int("duration", 0, "duration in seconds")
 	threshold := fs.Float64("threshold", 0.35, "legacy CI threshold in kgCO2/kWh (used when threshold-enter/exit are unset)")
 	thresholdEnter := fs.Float64("threshold-enter", -1, "run when CI is <= this threshold in kgCO2/kWh")
@@ -62,7 +62,7 @@ func runAware(args []string) error {
 	if effectiveEnter > effectiveExit {
 		return cgerrors.Newf(cgerrors.InputError, "threshold-enter must be <= threshold-exit")
 	}
-	resolvedZone, err := resolveZone(*zone, *zoneMode)
+	resolvedZone, err := resolveZone(*zone, *zoneMode, defaults.Zone)
 	if err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
 	}
@@ -95,7 +95,14 @@ func runAware(args []string) error {
 	if err != nil {
 		return mapAppError(err)
 	}
-	fmt.Printf("Resolved Zone: %s (source: %s, confidence: %s)\n", resolvedZone.Zone, resolvedZone.Source, resolvedZone.Confidence)
+	fmt.Printf(
+		"Resolved Zone: %s (source: %s, confidence: %s, reason: %s, fallback_used: %t)\n",
+		resolvedZone.Zone,
+		resolvedZone.Source,
+		resolvedZone.Confidence,
+		resolvedZone.Reason,
+		resolvedZone.FallbackUsed,
+	)
 	fmt.Println(out.Message)
 	return nil
 }
