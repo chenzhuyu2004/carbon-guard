@@ -15,15 +15,22 @@ func IsWithinWindow(now time.Time, start time.Time, end time.Time) bool {
 	return (now.Equal(start) || now.After(start)) && now.Before(end)
 }
 
-func ForecastCoverageSeconds(points []ForecastPoint) int {
+func ForecastCoverageSeconds(points []ForecastPoint, windowEnd time.Time) int {
 	total := 0
 	for i := range points {
-		total += inferredSliceDurationSeconds(points, i)
+		total += inferredSliceDurationSeconds(points, i, windowEnd)
 	}
 	return total
 }
 
-func EstimateWindowEmissions(points []ForecastPoint, duration int, runner string, load float64, pue float64) (float64, bool) {
+func EstimateWindowEmissions(
+	points []ForecastPoint,
+	duration int,
+	runner string,
+	load float64,
+	pue float64,
+	windowEnd time.Time,
+) (float64, bool) {
 	if duration <= 0 {
 		return 0, false
 	}
@@ -36,7 +43,7 @@ func EstimateWindowEmissions(points []ForecastPoint, duration int, runner string
 			break
 		}
 
-		segmentDuration := inferredSliceDurationSeconds(points, i)
+		segmentDuration := inferredSliceDurationSeconds(points, i, windowEnd)
 		if segmentDuration <= 0 {
 			continue
 		}
@@ -59,25 +66,31 @@ func EstimateWindowEmissions(points []ForecastPoint, duration int, runner string
 	return emission, true
 }
 
-func inferredSliceDurationSeconds(points []ForecastPoint, idx int) int {
+func inferredSliceDurationSeconds(points []ForecastPoint, idx int, windowEnd time.Time) int {
 	if idx < 0 || idx >= len(points) {
 		return 0
 	}
 
 	base := points[idx].Timestamp.UTC()
-	for i := idx + 1; i < len(points); i++ {
-		delta := int(points[i].Timestamp.UTC().Sub(base).Seconds())
-		if delta > 0 {
-			return delta
-		}
+	maxAvailable := int(windowEnd.UTC().Sub(base).Seconds())
+	if maxAvailable <= 0 {
+		return 0
 	}
 
-	for i := idx - 1; i >= 0; i-- {
-		delta := int(base.Sub(points[i].Timestamp.UTC()).Seconds())
-		if delta > 0 {
-			return delta
-		}
+	candidate := 0
+	if idx+1 < len(points) {
+		candidate = int(points[idx+1].Timestamp.UTC().Sub(base).Seconds())
+	} else if idx-1 >= 0 {
+		candidate = int(base.Sub(points[idx-1].Timestamp.UTC()).Seconds())
+	} else {
+		candidate = defaultForecastSliceSeconds
 	}
 
-	return defaultForecastSliceSeconds
+	if candidate <= 0 {
+		return 0
+	}
+	if candidate > maxAvailable {
+		candidate = maxAvailable
+	}
+	return candidate
 }

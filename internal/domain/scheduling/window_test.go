@@ -26,8 +26,9 @@ func TestEstimateWindowEmissionsCompleteWindow(t *testing.T) {
 		{Timestamp: time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC), CI: 0.4},
 		{Timestamp: time.Date(2026, 1, 1, 11, 0, 0, 0, time.UTC), CI: 0.8},
 	}
+	windowEnd := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	got, ok := EstimateWindowEmissions(points, 5400, "ubuntu", 0.5, 1.2)
+	got, ok := EstimateWindowEmissions(points, 5400, "ubuntu", 0.5, 1.2, windowEnd)
 	if !ok {
 		t.Fatalf("EstimateWindowEmissions() reported incomplete window")
 	}
@@ -47,8 +48,9 @@ func TestEstimateWindowEmissionsIncompleteWindow(t *testing.T) {
 	points := []ForecastPoint{
 		{Timestamp: time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC), CI: 0.4},
 	}
+	windowEnd := time.Date(2026, 1, 1, 11, 0, 0, 0, time.UTC)
 
-	_, ok := EstimateWindowEmissions(points, 7200, "ubuntu", 0.6, 1.2)
+	_, ok := EstimateWindowEmissions(points, 7200, "ubuntu", 0.6, 1.2, windowEnd)
 	if ok {
 		t.Fatalf("expected incomplete window when duration exceeds forecast coverage")
 	}
@@ -59,8 +61,9 @@ func TestEstimateWindowEmissionsUsesActualTimestampIntervals(t *testing.T) {
 		{Timestamp: time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC), CI: 0.2},
 		{Timestamp: time.Date(2026, 1, 1, 10, 30, 0, 0, time.UTC), CI: 0.8},
 	}
+	windowEnd := time.Date(2026, 1, 1, 11, 0, 0, 0, time.UTC)
 
-	got, ok := EstimateWindowEmissions(points, 3600, "ubuntu", 0.6, 1.2)
+	got, ok := EstimateWindowEmissions(points, 3600, "ubuntu", 0.6, 1.2, windowEnd)
 	if !ok {
 		t.Fatalf("EstimateWindowEmissions() reported incomplete window")
 	}
@@ -82,9 +85,10 @@ func TestForecastCoverageSecondsUsesTimestampSpacing(t *testing.T) {
 		{Timestamp: time.Date(2026, 1, 1, 10, 30, 0, 0, time.UTC), CI: 0.4},
 		{Timestamp: time.Date(2026, 1, 1, 11, 30, 0, 0, time.UTC), CI: 0.5},
 	}
+	windowEnd := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	got := ForecastCoverageSeconds(points)
-	want := 1800 + 3600 + 3600
+	got := ForecastCoverageSeconds(points, windowEnd)
+	want := 1800 + 3600 + 1800
 	if got != want {
 		t.Fatalf("ForecastCoverageSeconds() = %d, expected %d", got, want)
 	}
