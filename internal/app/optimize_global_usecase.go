@@ -60,13 +60,13 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 				cancel()
 				return
 			}
-			if len(forecast) == 0 {
-				errCh <- fmt.Errorf("%w: zone %s failed: no forecast points", ErrNoValidWindow, zone)
+			normalized := scheduling.NormalizeForecastUTC(forecast)
+			normalized = clipForecastToWindow(normalized, requestStart, in.Lookahead)
+			if len(normalized) == 0 {
+				errCh <- fmt.Errorf("%w: zone %s failed: no forecast points in lookahead window", ErrNoValidWindow, zone)
 				cancel()
 				return
 			}
-
-			normalized := scheduling.NormalizeForecastUTC(forecast)
 			mu.Lock()
 			zoneForecasts[zone] = normalized
 			mu.Unlock()

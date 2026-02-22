@@ -14,6 +14,7 @@ func (a *App) AnalyzeBestWindow(
 	zone string,
 	duration int,
 	lookahead int,
+	evalStart time.Time,
 	model ModelContext,
 	waitCost float64,
 ) (SuggestionAnalysis, error) {
@@ -41,13 +42,14 @@ func (a *App) AnalyzeBestWindow(
 		return SuggestionAnalysis{}, err
 	}
 
-	requestStart := time.Now().UTC()
+	evalStart = resolveEvalStart(evalStart)
 	forecast, err := a.provider.GetForecastCI(ctx, zone, lookahead)
 	if err != nil {
 		return SuggestionAnalysis{}, wrapProviderError(err)
 	}
-	windowEnd := requestStart.Add(time.Duration(lookahead) * time.Hour).UTC()
+	windowEnd := evalStart.Add(time.Duration(lookahead) * time.Hour).UTC()
 	forecast = scheduling.NormalizeForecastUTC(forecast)
+	forecast = clipForecastToWindow(forecast, evalStart, lookahead)
 	if len(forecast) == 0 {
 		return SuggestionAnalysis{}, fmt.Errorf("%w: no forecast points found for zone %s", ErrNoValidWindow, zone)
 	}
@@ -77,11 +79,11 @@ func (a *App) AnalyzeBestWindow(
 	currentEmission := currentWindow.Emission
 	currentStart := currentWindow.Start.UTC()
 	currentEnd := currentWindow.End.UTC()
-	currentScore := currentEmission + waitCost*maxFloat(currentStart.Sub(requestStart).Hours(), 0)
+	currentScore := currentEmission + waitCost*maxFloat(currentStart.Sub(evalStart).Hours(), 0)
 	bestStart := bestWindow.Start.UTC()
 	bestEnd := bestWindow.End.UTC()
 	bestEmission := bestWindow.Emission
-	bestScore := bestEmission + waitCost*maxFloat(bestStart.Sub(requestStart).Hours(), 0)
+	bestScore := bestEmission + waitCost*maxFloat(bestStart.Sub(evalStart).Hours(), 0)
 
 	for _, point := range forecast {
 		start := point.Timestamp.UTC()
@@ -90,7 +92,7 @@ func (a *App) AnalyzeBestWindow(
 			break
 		}
 
-		score := emission + waitCost*maxFloat(start.Sub(requestStart).Hours(), 0)
+		score := emission + waitCost*maxFloat(start.Sub(evalStart).Hours(), 0)
 		if score < bestScore || (score == bestScore && emission < bestEmission) {
 			bestScore = score
 			bestEmission = emission
@@ -140,8 +142,9 @@ func (a *App) Suggest(ctx context.Context, in SuggestInput) (SuggestOutput, erro
 	if err != nil {
 		return SuggestOutput{}, err
 	}
+	evalStart := time.Now().UTC()
 
-	analysis, err := a.AnalyzeBestWindow(ctx, in.Zone, in.Duration, in.Lookahead, model, in.WaitCost)
+	analysis, err := a.AnalyzeBestWindow(ctx, in.Zone, in.Duration, in.Lookahead, evalStart, model, in.WaitCost)
 	if err != nil {
 		return SuggestOutput{}, err
 	}
@@ -164,7 +167,8 @@ func (a *App) Suggest(ctx context.Context, in SuggestInput) (SuggestOutput, erro
 		reduction = (currentEmissionNow - bestEmission) / currentEmissionNow * 100
 	}
 
-	if currentCI <= in.Threshold && currentEmissionNow <= analysis.BestEmission*1.05 {
+	nowScore := currentEmissionNow
+	if currentCI <= in.Threshold && nowScore <= analysis.BestScore*1.05 {
 		bestStart = analysis.CurrentStart
 		bestEnd = analysis.CurrentEnd
 		bestEmission = currentEmissionNow

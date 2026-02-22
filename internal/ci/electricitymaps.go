@@ -139,8 +139,6 @@ func (p *ElectricityMapsProvider) GetForecastCI(ctx context.Context, zone string
 		return nil, fmt.Errorf("decode electricity maps forecast response: %w", err)
 	}
 
-	now := time.Now().UTC()
-	limit := now.Add(time.Duration(hours) * time.Hour)
 	points := make([]ForecastPoint, 0, len(body.Forecast))
 
 	for _, item := range body.Forecast {
@@ -153,9 +151,6 @@ func (p *ElectricityMapsProvider) GetForecastCI(ctx context.Context, zone string
 			return nil, err
 		}
 		timestamp = timestamp.UTC()
-		if timestamp.Before(now) || timestamp.After(limit) {
-			continue
-		}
 
 		points = append(points, ForecastPoint{
 			Timestamp: timestamp,

@@ -39,7 +39,7 @@ func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, e
 	startTime := time.Now().UTC()
 	deadline := startTime.Add(in.MaxWait)
 
-	analysis, err := a.AnalyzeBestWindow(ctx, in.Zone, in.Duration, in.Lookahead, model, 0)
+	analysis, err := a.AnalyzeBestWindow(ctx, in.Zone, in.Duration, in.Lookahead, startTime, model, 0)
 	if err != nil {
 		return RunAwareOutput{}, err
 	}

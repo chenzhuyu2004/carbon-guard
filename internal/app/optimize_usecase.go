@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 )
 
 func (a *App) Optimize(ctx context.Context, in OptimizeInput) (OptimizeOutput, error) {
@@ -34,6 +35,7 @@ func (a *App) Optimize(ctx context.Context, in OptimizeInput) (OptimizeOutput, e
 	if err != nil {
 		return OptimizeOutput{}, err
 	}
+	evalStart := time.Now().UTC()
 
 	ctx, cancel := context.WithTimeout(ctx, in.Timeout)
 	defer cancel()
@@ -53,7 +55,7 @@ func (a *App) Optimize(ctx context.Context, in OptimizeInput) (OptimizeOutput, e
 		go func() {
 			defer wg.Done()
 
-			analysis, err := a.AnalyzeBestWindow(ctx, zone, in.Duration, in.Lookahead, model, in.WaitCost)
+			analysis, err := a.AnalyzeBestWindow(ctx, zone, in.Duration, in.Lookahead, evalStart, model, in.WaitCost)
 			if err != nil {
 				outcomeCh <- zoneOutcome{zone: zone, err: err}
 				return
