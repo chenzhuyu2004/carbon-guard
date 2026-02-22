@@ -278,9 +278,9 @@ func resolveAutoZone(hints autoHints) (resolvedZone, bool, error) {
 
 	if countryRaw := firstNonEmpty(strings.TrimSpace(hints.CountryHint), strings.TrimSpace(os.Getenv(envCountryHint))); countryRaw != "" {
 		country := strings.ToUpper(strings.TrimSpace(countryRaw))
-		zone := countryToAutoZone(country)
-		if zone == "" {
-			return resolvedZone{}, false, fmt.Errorf("invalid country hint %q", countryRaw)
+		zone, ok := zoneFromCountry(country)
+		if !ok {
+			return resolvedZone{}, false, fmt.Errorf("country hint %q has no curated default zone; set %s instead", countryRaw, envZoneHint)
 		}
 		return resolvedZone{
 			Zone:         zone,
@@ -292,24 +292,20 @@ func resolveAutoZone(hints autoHints) (resolvedZone, bool, error) {
 	}
 
 	if tzRaw := firstNonEmpty(strings.TrimSpace(hints.TimezoneHint), strings.TrimSpace(os.Getenv(envTimezoneHint))); tzRaw != "" {
-		if country, ok := countryFromTZ(tzRaw); ok {
-			zone := countryToAutoZone(country)
-			if zone != "" {
-				return resolvedZone{
-					Zone:         zone,
-					Source:       "auto:timezone-hint",
-					Confidence:   "medium",
-					Reason:       "from timezone hint",
-					FallbackUsed: true,
-				}, true, nil
-			}
+		if zone, ok := zoneFromTimezone(tzRaw); ok {
+			return resolvedZone{
+				Zone:         zone,
+				Source:       "auto:timezone-hint",
+				Confidence:   "medium",
+				Reason:       "from timezone hint",
+				FallbackUsed: true,
+			}, true, nil
 		}
 		return resolvedZone{}, false, fmt.Errorf("invalid timezone hint %q", tzRaw)
 	}
 
 	if country, source, reason, ok := detectCountryHint(); ok {
-		zone := countryToAutoZone(country)
-		if zone != "" {
+		if zone, ok := zoneFromCountry(country); ok {
 			return resolvedZone{
 				Zone:         zone,
 				Source:       source,
@@ -327,6 +323,10 @@ func detectCountryHint() (string, string, string, bool) {
 		if country, ok := countryFromLocale(os.Getenv(key)); ok {
 			return country, "auto:locale", "inferred from " + key, true
 		}
+	}
+	if zone, ok := zoneFromTimezone(os.Getenv(envTimezoneSystem)); ok {
+		country := strings.SplitN(zone, "-", 2)[0]
+		return country, "auto:tz", "inferred from " + envTimezoneSystem, true
 	}
 	if country, ok := countryFromTZ(os.Getenv(envTimezoneSystem)); ok {
 		return country, "auto:tz", "inferred from " + envTimezoneSystem, true
@@ -383,47 +383,66 @@ func isAlpha2(value string) bool {
 	return true
 }
 
-func countryToAutoZone(country string) string {
-	switch strings.ToUpper(strings.TrimSpace(country)) {
-	case "UK":
-		return "GB"
-	case "US":
-		return "US-NY"
-	case "CA":
-		return "CA-ON"
-	case "AU":
-		return "AU-NSW"
-	default:
-		if isAlpha2(strings.ToUpper(strings.TrimSpace(country))) {
-			return strings.ToUpper(strings.TrimSpace(country))
-		}
-		return ""
-	}
+func zoneFromCountry(country string) (string, bool) {
+	zone, ok := curatedCountryZoneMap[strings.ToUpper(strings.TrimSpace(country))]
+	return zone, ok
+}
+
+func zoneFromTimezone(tz string) (string, bool) {
+	zone, ok := curatedTimezoneZoneMap[strings.TrimSpace(tz)]
+	return zone, ok
+}
+
+var curatedCountryZoneMap = map[string]string{
+	"AT": "AT",
+	"BE": "BE",
+	"CH": "CH",
+	"CN": "CN",
+	"DE": "DE",
+	"DK": "DK",
+	"ES": "ES",
+	"FI": "FI",
+	"FR": "FR",
+	"GB": "GB",
+	"IE": "IE",
+	"IN": "IN",
+	"IT": "IT",
+	"JP": "JP",
+	"KR": "KR",
+	"NL": "NL",
+	"NO": "NO",
+	"PL": "PL",
+	"SE": "SE",
+	"SG": "SG",
+	"UK": "GB",
+}
+
+var curatedTimezoneZoneMap = map[string]string{
+	"Europe/Berlin":    "DE",
+	"Europe/Paris":     "FR",
+	"Europe/Warsaw":    "PL",
+	"Europe/London":    "GB",
+	"Europe/Madrid":    "ES",
+	"Europe/Rome":      "IT",
+	"Europe/Amsterdam": "NL",
+	"Europe/Brussels":  "BE",
+	"Europe/Stockholm": "SE",
+	"Europe/Oslo":      "NO",
+	"Europe/Zurich":    "CH",
+	"America/New_York": "US-NY",
+	"America/Toronto":  "CA-ON",
+	"Australia/Sydney": "AU-NSW",
 }
 
 var tzCountryHints = map[string]string{
-	"Europe/Berlin":       "DE",
-	"Europe/Paris":        "FR",
-	"Europe/Warsaw":       "PL",
-	"Europe/London":       "GB",
-	"Europe/Madrid":       "ES",
-	"Europe/Rome":         "IT",
-	"Europe/Amsterdam":    "NL",
-	"Europe/Brussels":     "BE",
-	"Europe/Stockholm":    "SE",
-	"Europe/Oslo":         "NO",
-	"Europe/Zurich":       "CH",
-	"America/New_York":    "US",
-	"America/Chicago":     "US",
-	"America/Denver":      "US",
-	"America/Los_Angeles": "US",
-	"Asia/Shanghai":       "CN",
-	"Asia/Chongqing":      "CN",
-	"Asia/Beijing":        "CN",
-	"Asia/Singapore":      "SG",
-	"Asia/Tokyo":          "JP",
-	"Asia/Seoul":          "KR",
-	"Asia/Kolkata":        "IN",
-	"Australia/Sydney":    "AU",
-	"Australia/Melbourne": "AU",
+	"America/New_York": "US",
+	"America/Toronto":  "CA",
+	"Australia/Sydney": "AU",
+	"Asia/Shanghai":    "CN",
+	"Asia/Chongqing":   "CN",
+	"Asia/Beijing":     "CN",
+	"Asia/Singapore":   "SG",
+	"Asia/Tokyo":       "JP",
+	"Asia/Seoul":       "KR",
+	"Asia/Kolkata":     "IN",
 }

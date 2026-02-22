@@ -30,7 +30,7 @@ These apply to `suggest`, `run-aware`, `optimize`, and `optimize-global`.
 | `CARBON_GUARD_ZONES` | Default zone list fallback for `optimize` / `optimize-global`. |
 | `CARBON_GUARD_ZONE_MODE` | Default zone resolution mode (`strict`, `fallback`, `auto`). |
 | `CARBON_GUARD_ZONE_HINT` | Auto-mode explicit zone hint (for example `US-NY`). |
-| `CARBON_GUARD_COUNTRY_HINT` | Auto-mode country hint (ISO alpha-2, for example `DE`). |
+| `CARBON_GUARD_COUNTRY_HINT` | Auto-mode country hint (ISO alpha-2) for curated one-zone mappings only (for example `DE`). |
 | `CARBON_GUARD_TIMEZONE_HINT` | Auto-mode timezone hint (IANA TZ, for example `Europe/Berlin`). |
 
 ## Config File (JSON)
@@ -49,7 +49,7 @@ Example:
   "zones": "DE,FR,PL",
   "zone_mode": "fallback",
   "zone_hint": "US-NY",
-  "country_hint": "US",
+  "country_hint": "DE",
   "timezone_hint": "America/New_York"
 }
 ```
@@ -89,6 +89,11 @@ Auto-mode hint resolution uses:
 2. `country_hint` / `CARBON_GUARD_COUNTRY_HINT`
 3. `timezone_hint` / `CARBON_GUARD_TIMEZONE_HINT`
 4. Locale/timezone heuristic (`LC_ALL`, `LC_MESSAGES`, `LANG`, `TZ`)
+
+Notes:
+
+- `country_hint` is intentionally strict and only supports curated defaults.
+- For multi-zone countries (for example `US`, `CA`, `AU`), use `zone_hint` or `timezone_hint`.
 
 ## Cache Configuration
 
