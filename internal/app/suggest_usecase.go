@@ -48,34 +48,34 @@ func (a *App) AnalyzeBestWindow(
 		return SuggestionAnalysis{}, fmt.Errorf("%w: no forecast points found for zone %s", ErrNoValidWindow, zone)
 	}
 
-	maxCoverage := scheduling.ForecastCoverageSeconds(forecast, windowEnd)
+	evaluator, ok := scheduling.BuildEmissionEvaluator(forecast, windowEnd)
+	if !ok {
+		return SuggestionAnalysis{}, fmt.Errorf("%w: no forecast points found for zone %s", ErrNoValidWindow, zone)
+	}
+
+	maxCoverage := evaluator.CoverageSeconds()
 	if maxCoverage < duration {
 		return SuggestionAnalysis{}, fmt.Errorf("%w: forecast does not cover full duration: need %ds but only %ds available", ErrNoValidWindow, duration, maxCoverage)
 	}
 
-	currentEmission, ok := scheduling.EstimateWindowEmissions(forecast, duration, model.Runner, model.Load, model.PUE, windowEnd)
+	currentWindow, bestWindow, ok := scheduling.FindBestWindowAtForecastStarts(
+		forecast,
+		evaluator,
+		duration,
+		model.Runner,
+		model.Load,
+		model.PUE,
+	)
 	if !ok {
 		return SuggestionAnalysis{}, fmt.Errorf("%w: forecast does not cover full duration: need %ds within lookahead %dh", ErrNoValidWindow, duration, lookahead)
 	}
 
-	bestEmission := currentEmission
-	currentStart := forecast[0].Timestamp.UTC()
-	currentEnd := currentStart.Add(time.Duration(duration) * time.Second).UTC()
-	bestStart := currentStart
-
-	for i := 1; i < len(forecast); i++ {
-		emission, ok := scheduling.EstimateWindowEmissions(forecast[i:], duration, model.Runner, model.Load, model.PUE, windowEnd)
-		if !ok {
-			break
-		}
-		if emission < bestEmission {
-			bestEmission = emission
-			bestStart = forecast[i].Timestamp.UTC()
-		}
-	}
-
-	bestStart = bestStart.UTC()
-	bestEnd := bestStart.Add(time.Duration(duration) * time.Second).UTC()
+	currentEmission := currentWindow.Emission
+	currentStart := currentWindow.Start.UTC()
+	currentEnd := currentWindow.End.UTC()
+	bestStart := bestWindow.Start.UTC()
+	bestEnd := bestWindow.End.UTC()
+	bestEmission := bestWindow.Emission
 	reduction := 0.0
 	if currentEmission > 0 {
 		reduction = (currentEmission - bestEmission) / currentEmission * 100
