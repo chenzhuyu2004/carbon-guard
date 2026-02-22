@@ -15,6 +15,8 @@ import (
 const defaultElectricityMapsLatestURL = "https://api.electricitymaps.com/v3/carbon-intensity/latest"
 const defaultElectricityMapsForecastURL = "https://api.electricitymaps.com/v3/carbon-intensity/forecast"
 
+// electricityMapsHTTPClient is intentionally bounded to avoid hanging CI jobs.
+// electricityMapsHTTPClient 设置固定超时，避免 CI 作业因网络问题长期挂起。
 var electricityMapsHTTPClient = &http.Client{
 	Timeout: 10 * time.Second,
 }
@@ -26,6 +28,8 @@ type ElectricityMapsProvider struct {
 	APIKey string
 }
 
+// HTTPStatusError preserves upstream status and body for diagnostics.
+// HTTPStatusError 保留上游状态码和响应体，便于诊断问题。
 type HTTPStatusError struct {
 	StatusCode int
 	Status     string
@@ -39,6 +43,11 @@ func (e *HTTPStatusError) Error() string {
 	return fmt.Sprintf("electricity maps api status: %s (%s)", e.Status, e.Body)
 }
 
+// GetCurrentCI fetches latest carbon intensity for one zone.
+// GetCurrentCI 获取单区域当前碳强度。
+//
+// Upstream unit is gCO2/kWh, converted to kgCO2/kWh before returning.
+// 上游单位为 gCO2/kWh，返回前会转换为 kgCO2/kWh。
 func (p *ElectricityMapsProvider) GetCurrentCI(ctx context.Context, zone string) (float64, error) {
 	if p.APIKey == "" {
 		return 0, fmt.Errorf("missing ELECTRICITY_MAPS_API_KEY: set an Electricity Maps API key to use live carbon data")
@@ -89,6 +98,13 @@ func (p *ElectricityMapsProvider) GetCurrentCI(ctx context.Context, zone string)
 	return body.CarbonIntensity / 1000.0, nil
 }
 
+// GetForecastCI fetches forecast points for one zone.
+// GetForecastCI 获取单区域 forecast 点序列。
+//
+// This provider only parses/normalizes/sorts data and keeps all valid points.
+// Lookahead clipping is handled in app layer for deterministic orchestration.
+// provider 仅负责解析、单位转换和排序，并保留全部有效点；
+// lookahead 裁剪由 app 层负责，以保证编排语义一致。
 func (p *ElectricityMapsProvider) GetForecastCI(ctx context.Context, zone string, hours int) ([]ForecastPoint, error) {
 	if p.APIKey == "" {
 		return nil, fmt.Errorf("missing ELECTRICITY_MAPS_API_KEY: set an Electricity Maps API key to use forecast carbon data")
@@ -165,6 +181,8 @@ func (p *ElectricityMapsProvider) GetForecastCI(ctx context.Context, zone string
 	return points, nil
 }
 
+// readErrorBody reads up to 4KB response body for safe error reporting.
+// readErrorBody 读取最多 4KB 响应体，用于安全错误输出。
 func readErrorBody(body io.Reader) string {
 	data, err := io.ReadAll(io.LimitReader(body, 4096))
 	if err != nil {
@@ -178,6 +196,8 @@ func readErrorBody(body io.Reader) string {
 	return text
 }
 
+// parseForecastTime parses RFC3339/RFC3339Nano timestamps.
+// parseForecastTime 解析 RFC3339 / RFC3339Nano 时间戳。
 func parseForecastTime(value string) (time.Time, error) {
 	timestamp, err := time.Parse(time.RFC3339, value)
 	if err == nil {

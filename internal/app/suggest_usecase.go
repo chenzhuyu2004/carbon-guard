@@ -9,6 +9,20 @@ import (
 	"github.com/chenzhuyu2004/carbon-guard/internal/domain/scheduling"
 )
 
+// AnalyzeBestWindow evaluates candidate execution windows for a single zone.
+// AnalyzeBestWindow 对单个区域的候选执行窗口进行评估。
+//
+// Objective:
+//
+//	score = emission_kg + wait_cost * wait_hours
+//
+// 目标函数：
+//
+//	score = emission_kg + wait_cost * wait_hours
+//
+// The function keeps backward compatibility when waitCost == 0
+// (pure emission minimization).
+// 当 waitCost == 0 时保持向后兼容（退化为纯排放最小化）。
 func (a *App) AnalyzeBestWindow(
 	ctx context.Context,
 	zone string,
@@ -42,6 +56,8 @@ func (a *App) AnalyzeBestWindow(
 		return SuggestionAnalysis{}, err
 	}
 
+	// Use one explicit UTC anchor to keep multi-zone/multi-call comparisons stable.
+	// 使用统一 UTC 锚点，保证多区域/多次调用的可比性与稳定性。
 	evalStart = resolveEvalStart(evalStart)
 	forecast, err := a.provider.GetForecastCI(ctx, zone, lookahead)
 	if err != nil {
@@ -49,6 +65,8 @@ func (a *App) AnalyzeBestWindow(
 	}
 	windowEnd := evalStart.Add(time.Duration(lookahead) * time.Hour).UTC()
 	forecast = scheduling.NormalizeForecastUTC(forecast)
+	// Clip in app layer so provider remains a pure transport adapter.
+	// 在 app 层裁剪时间窗口，保持 provider 仅负责传输与解析。
 	forecast = clipForecastToWindow(forecast, evalStart, lookahead)
 	if len(forecast) == 0 {
 		return SuggestionAnalysis{}, fmt.Errorf("%w: no forecast points found for zone %s", ErrNoValidWindow, zone)
@@ -79,6 +97,8 @@ func (a *App) AnalyzeBestWindow(
 	currentEmission := currentWindow.Emission
 	currentStart := currentWindow.Start.UTC()
 	currentEnd := currentWindow.End.UTC()
+	// Wait penalty only applies to future windows; negative wait is clamped to zero.
+	// 等待惩罚仅对未来窗口生效；负等待时间会被钳制为 0。
 	currentScore := currentEmission + waitCost*maxFloat(currentStart.Sub(evalStart).Hours(), 0)
 	bestStart := bestWindow.Start.UTC()
 	bestEnd := bestWindow.End.UTC()
@@ -119,6 +139,14 @@ func (a *App) AnalyzeBestWindow(
 	}, nil
 }
 
+// Suggest returns user-facing recommendation for one zone.
+// Suggest 返回单区域的用户侧执行建议。
+//
+// It combines forecast-based optimization with current CI check:
+// if "run now" score is close enough to best score and under threshold,
+// it recommends immediate execution.
+// 该函数将 forecast 优化与当前 CI 判断结合：
+// 若“立即执行”的评分足够接近最优评分且低于阈值，则建议立即执行。
 func (a *App) Suggest(ctx context.Context, in SuggestInput) (SuggestOutput, error) {
 	if in.Zone == "" {
 		return SuggestOutput{}, fmt.Errorf("%w: zone is required", ErrInput)
@@ -167,6 +195,8 @@ func (a *App) Suggest(ctx context.Context, in SuggestInput) (SuggestOutput, erro
 		reduction = (currentEmissionNow - bestEmission) / currentEmissionNow * 100
 	}
 
+	// "Run now" has zero waiting cost, so score == current emission.
+	// “立即执行”不产生等待成本，因此 score 等于当前排放。
 	nowScore := currentEmissionNow
 	if currentCI <= in.Threshold && nowScore <= analysis.BestScore*1.05 {
 		bestStart = analysis.CurrentStart
@@ -184,6 +214,8 @@ func (a *App) Suggest(ctx context.Context, in SuggestInput) (SuggestOutput, erro
 	}, nil
 }
 
+// maxFloat returns the larger of a and b.
+// maxFloat 返回 a 与 b 中的较大值。
 func maxFloat(a, b float64) float64 {
 	if a > b {
 		return a

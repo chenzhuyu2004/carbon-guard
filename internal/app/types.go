@@ -42,15 +42,19 @@ type SuggestOutput struct {
 }
 
 type SuggestionAnalysis struct {
+	// Current* describes the first valid window at evaluation start.
+	// Current* 描述评估起点对应的首个有效窗口。
 	CurrentEmission float64
 	CurrentStart    time.Time
 	CurrentEnd      time.Time
 	CurrentScore    float64
-	BestStart       time.Time
-	BestEnd         time.Time
-	BestEmission    float64
-	BestScore       float64
-	Reduction       float64
+	// Best* describes the minimal-score window under current objective.
+	// Best* 描述当前目标函数下评分最小的窗口。
+	BestStart    time.Time
+	BestEnd      time.Time
+	BestEmission float64
+	BestScore    float64
+	Reduction    float64
 }
 
 type RunAwareInput struct {
@@ -96,22 +100,28 @@ type OptimizeOutput struct {
 }
 
 type OptimizeGlobalInput struct {
-	Zones              []string
-	Duration           int
-	Lookahead          int
-	WaitCost           float64
-	ResampleFillMode   string
+	// ResampleFillMode controls cross-zone alignment: forward|strict.
+	// ResampleFillMode 控制跨区域对齐策略：forward|strict。
+	Zones            []string
+	Duration         int
+	Lookahead        int
+	WaitCost         float64
+	ResampleFillMode string
+	// ResampleMaxFillAge is only effective in forward mode.
+	// ResampleMaxFillAge 仅在 forward 模式下生效。
 	ResampleMaxFillAge time.Duration
 	Model              ModelContext
 	Timeout            time.Duration
 }
 
 type OptimizeGlobalOutput struct {
-	BestZone                  string
-	BestStart                 time.Time
-	BestEnd                   time.Time
-	Emission                  float64
-	Reduction                 float64
+	BestZone  string
+	BestStart time.Time
+	BestEnd   time.Time
+	Emission  float64
+	Reduction float64
+	// Resample* echoes effective policy so outputs are audit-friendly.
+	// Resample* 回显实际生效策略，便于审计与复现。
 	ResampleFillMode          string
 	ResampleMaxFillAgeSeconds int64
 }

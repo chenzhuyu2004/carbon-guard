@@ -8,6 +8,17 @@ import (
 	"github.com/chenzhuyu2004/carbon-guard/internal/domain/scheduling"
 )
 
+// RunAware waits for greener conditions and decides when to run.
+// RunAware 根据碳强度等待更绿色时机，并决定何时执行。
+//
+// Deterministic rules:
+// 1) Best forecast window is computed once at start.
+// 2) Forecast is not refreshed in loop; only current CI is refreshed.
+// 3) Exit when entering best window OR CI <= threshold-enter OR deadline exceeded.
+// 确定性规则：
+// 1) 最优 forecast 窗口仅在开始时计算一次。
+// 2) 循环内不刷新 forecast，只刷新当前 CI。
+// 3) 进入最优窗口 / CI<=threshold-enter / 超过截止时间时退出。
 func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, error) {
 	if a == nil || a.provider == nil {
 		return RunAwareOutput{}, fmt.Errorf("%w: provider is not configured", ErrProvider)
@@ -60,6 +71,8 @@ func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, e
 			return RunAwareOutput{}, fmt.Errorf("%w: Max wait exceeded", ErrMaxWaitExceeded)
 		}
 
+		// Window end is exclusive; reaching end means optimal window is missed.
+		// 窗口右边界是开区间；到达 end 即视为错过最优窗口。
 		if !now.Before(bestEnd) {
 			return RunAwareOutput{}, fmt.Errorf("%w: Missed optimal window", ErrMissedOptimalWindow)
 		}
@@ -77,6 +90,8 @@ func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, e
 			return RunAwareOutput{Message: "CI dropped below threshold-enter, running now"}, nil
 		}
 
+		// Wait duration is dynamically bounded by remaining max-wait budget.
+		// 等待时长会被剩余 max-wait 预算动态限制。
 		wait := pollEvery
 		remaining := deadline.Sub(now)
 		if remaining < wait {
