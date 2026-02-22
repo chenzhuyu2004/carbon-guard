@@ -32,20 +32,19 @@ func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, e
 		return RunAwareOutput{}, err
 	}
 
+	startTime := time.Now().UTC()
+	deadline := startTime.Add(in.MaxWait)
+
 	analysis, err := a.AnalyzeBestWindow(ctx, in.Zone, in.Duration, in.Lookahead, model)
 	if err != nil {
 		return RunAwareOutput{}, err
 	}
+	if !time.Now().UTC().Before(deadline) {
+		return RunAwareOutput{}, fmt.Errorf("%w: Max wait exceeded", ErrMaxWaitExceeded)
+	}
 
 	bestStart := analysis.BestStart.UTC()
 	bestEnd := analysis.BestEnd.UTC()
-	currentCI, err := a.provider.GetCurrentCI(ctx, in.Zone)
-	if err != nil {
-		return RunAwareOutput{}, wrapProviderError(err)
-	}
-
-	startTime := time.Now().UTC()
-	deadline := startTime.Add(in.MaxWait)
 	pollEvery := in.PollEvery
 	if pollEvery <= 0 {
 		pollEvery = 15 * time.Minute
@@ -65,7 +64,7 @@ func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, e
 			return RunAwareOutput{Message: "Entering optimal carbon window"}, nil
 		}
 
-		currentCI, err = a.provider.GetCurrentCI(ctx, in.Zone)
+		currentCI, err := a.provider.GetCurrentCI(ctx, in.Zone)
 		if err != nil {
 			return RunAwareOutput{}, wrapProviderError(err)
 		}

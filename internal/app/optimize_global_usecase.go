@@ -34,6 +34,9 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 		return OptimizeGlobalOutput{}, err
 	}
 
+	requestStart := time.Now().UTC()
+	windowEnd := requestStart.Add(time.Duration(in.Lookahead) * time.Hour).UTC()
+
 	ctx, cancel := context.WithTimeout(ctx, in.Timeout)
 	defer cancel()
 
@@ -107,7 +110,7 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 				continue
 			}
 
-			emission, ok := scheduling.EstimateWindowEmissions(zoneForecasts[zone][index:], in.Duration, model.Runner, model.Load, model.PUE)
+			emission, ok := scheduling.EstimateWindowEmissions(zoneForecasts[zone][index:], in.Duration, model.Runner, model.Load, model.PUE, windowEnd)
 			if !ok {
 				continue
 			}

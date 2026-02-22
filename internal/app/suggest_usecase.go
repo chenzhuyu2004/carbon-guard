@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/chenzhuyu2004/carbon-guard/internal/calculator"
 	"github.com/chenzhuyu2004/carbon-guard/internal/domain/scheduling"
 )
 
@@ -36,21 +37,23 @@ func (a *App) AnalyzeBestWindow(
 		return SuggestionAnalysis{}, fmt.Errorf("%w: duration %ds exceeds lookahead window %ds", ErrInput, duration, lookahead*3600)
 	}
 
+	requestStart := time.Now().UTC()
 	forecast, err := a.provider.GetForecastCI(ctx, zone, lookahead)
 	if err != nil {
 		return SuggestionAnalysis{}, wrapProviderError(err)
 	}
+	windowEnd := requestStart.Add(time.Duration(lookahead) * time.Hour).UTC()
 	forecast = scheduling.NormalizeForecastUTC(forecast)
 	if len(forecast) == 0 {
 		return SuggestionAnalysis{}, fmt.Errorf("%w: no forecast points found for zone %s", ErrNoValidWindow, zone)
 	}
 
-	maxCoverage := scheduling.ForecastCoverageSeconds(forecast)
+	maxCoverage := scheduling.ForecastCoverageSeconds(forecast, windowEnd)
 	if maxCoverage < duration {
 		return SuggestionAnalysis{}, fmt.Errorf("%w: forecast does not cover full duration: need %ds but only %ds available", ErrNoValidWindow, duration, maxCoverage)
 	}
 
-	currentEmission, ok := scheduling.EstimateWindowEmissions(forecast, duration, model.Runner, model.Load, model.PUE)
+	currentEmission, ok := scheduling.EstimateWindowEmissions(forecast, duration, model.Runner, model.Load, model.PUE, windowEnd)
 	if !ok {
 		return SuggestionAnalysis{}, fmt.Errorf("%w: forecast does not cover full duration: need %ds within lookahead %dh", ErrNoValidWindow, duration, lookahead)
 	}
@@ -61,7 +64,7 @@ func (a *App) AnalyzeBestWindow(
 	bestStart := currentStart
 
 	for i := 1; i < len(forecast); i++ {
-		emission, ok := scheduling.EstimateWindowEmissions(forecast[i:], duration, model.Runner, model.Load, model.PUE)
+		emission, ok := scheduling.EstimateWindowEmissions(forecast[i:], duration, model.Runner, model.Load, model.PUE, windowEnd)
 		if !ok {
 			break
 		}
@@ -115,16 +118,25 @@ func (a *App) Suggest(ctx context.Context, in SuggestInput) (SuggestOutput, erro
 	if err != nil {
 		return SuggestOutput{}, wrapProviderError(err)
 	}
+	currentEmissionNow := calculator.EstimateEmissionsWithSegments(
+		[]calculator.Segment{{Duration: in.Duration, CI: currentCI}},
+		model.Runner,
+		model.Load,
+		model.PUE,
+	)
 
 	bestStart := analysis.BestStart
 	bestEnd := analysis.BestEnd
 	bestEmission := analysis.BestEmission
-	reduction := analysis.Reduction
+	reduction := 0.0
+	if currentEmissionNow > 0 {
+		reduction = (currentEmissionNow - bestEmission) / currentEmissionNow * 100
+	}
 
-	if currentCI <= in.Threshold && analysis.CurrentEmission <= analysis.BestEmission*1.05 {
+	if currentCI <= in.Threshold && currentEmissionNow <= analysis.BestEmission*1.05 {
 		bestStart = analysis.CurrentStart
 		bestEnd = analysis.CurrentEnd
-		bestEmission = analysis.CurrentEmission
+		bestEmission = currentEmissionNow
 		reduction = 0
 	}
 
