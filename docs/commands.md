@@ -84,7 +84,9 @@ carbon-guard run-aware --zone <ZONE> --duration <seconds> [flags]
 | --- | --- | --- | --- | --- |
 | `--zone` | string | `""` | Yes | Electricity Maps zone. |
 | `--duration` | int | `0` | Yes | Runtime in seconds. |
-| `--threshold` | float | `0.35` | No | CI threshold (`kgCO2/kWh`). |
+| `--threshold` | float | `0.35` | No | Legacy threshold used when `--threshold-enter/--threshold-exit` are unset. |
+| `--threshold-enter` | float | `-1` | No | Run when current CI is `<= threshold-enter` (`kgCO2/kWh`). |
+| `--threshold-exit` | float | `-1` | No | Keep waiting when current CI is `>= threshold-exit` (`kgCO2/kWh`). Must be `>= threshold-enter`. |
 | `--lookahead` | int | `6` | No | Forecast lookahead in hours. |
 | `--max-wait` | float | `6` | No | Maximum wait time in hours. |
 | `--config` | string | `""` | No | Path to JSON config file for shared defaults. |

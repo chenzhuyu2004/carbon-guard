@@ -51,14 +51,16 @@ type SuggestionAnalysis struct {
 }
 
 type RunAwareInput struct {
-	Zone       string
-	Duration   int
-	Threshold  float64
-	Lookahead  int
-	Model      ModelContext
-	MaxWait    time.Duration
-	PollEvery  time.Duration
-	StatusFunc func(string)
+	Zone           string
+	Duration       int
+	Threshold      float64
+	ThresholdEnter float64
+	ThresholdExit  float64
+	Lookahead      int
+	Model          ModelContext
+	MaxWait        time.Duration
+	PollEvery      time.Duration
+	StatusFunc     func(string)
 }
 
 type RunAwareOutput struct {
