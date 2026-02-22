@@ -13,12 +13,14 @@ import (
 )
 
 type OptimizeGlobalResult struct {
-	DurationSeconds     int     `json:"duration_seconds"`
-	BestZone            string  `json:"best_zone"`
-	BestWindowStartUTC  string  `json:"best_window_start_utc"`
-	BestWindowEndUTC    string  `json:"best_window_end_utc"`
-	EmissionKg          float64 `json:"emission_kg"`
-	ReductionVsWorstPct float64 `json:"reduction_vs_worst_pct"`
+	DurationSeconds           int     `json:"duration_seconds"`
+	BestZone                  string  `json:"best_zone"`
+	BestWindowStartUTC        string  `json:"best_window_start_utc"`
+	BestWindowEndUTC          string  `json:"best_window_end_utc"`
+	EmissionKg                float64 `json:"emission_kg"`
+	ReductionVsWorstPct       float64 `json:"reduction_vs_worst_pct"`
+	ResampleFillMode          string  `json:"resample_fill_mode"`
+	ResampleMaxFillAgeSeconds int64   `json:"resample_max_fill_age_seconds"`
 }
 
 func optimizeGlobal(args []string) error {
@@ -35,6 +37,8 @@ func optimizeGlobal(args []string) error {
 	duration := fs.Int("duration", 0, "duration in seconds")
 	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")
 	waitCost := fs.Float64("wait-cost", 0, "waiting penalty in kgCO2 per hour")
+	resampleFill := fs.String("resample-fill", "forward", "resample fill mode: forward|strict")
+	resampleMaxFillAgeRaw := fs.String("resample-max-fill-age", "", "max forward-fill age (e.g. 30m). empty uses default")
 	timeoutStr := addTimeoutFlag(fs, defaults.Timeout)
 	outputMode := addOutputFlag(fs, defaults.Output)
 	cacheDirRaw, cacheTTLRaw := addCacheFlags(fs, defaults.CacheDir, defaults.CacheTTL)
@@ -69,6 +73,14 @@ func optimizeGlobal(args []string) error {
 	if *waitCost < 0 {
 		return cgerrors.Newf(cgerrors.InputError, "wait-cost must be >= 0")
 	}
+	resampleMaxFillAge := time.Duration(0)
+	if *resampleMaxFillAgeRaw != "" {
+		parsed, err := time.ParseDuration(*resampleMaxFillAgeRaw)
+		if err != nil || parsed < 0 {
+			return cgerrors.Newf(cgerrors.InputError, "resample-max-fill-age must be a non-negative duration")
+		}
+		resampleMaxFillAge = parsed
+	}
 
 	zoneList := splitZones(*zones)
 	if len(zoneList) == 0 {
@@ -82,12 +94,14 @@ func optimizeGlobal(args []string) error {
 
 	service := appsvc.New(newProviderAdapter(buildLiveProvider(apiKey, cacheDir, cacheTTL)))
 	out, err := service.OptimizeGlobal(context.Background(), appsvc.OptimizeGlobalInput{
-		Zones:     zoneList,
-		Duration:  *duration,
-		Lookahead: *lookahead,
-		WaitCost:  *waitCost,
-		Model:     defaultModelContext(),
-		Timeout:   timeout,
+		Zones:              zoneList,
+		Duration:           *duration,
+		Lookahead:          *lookahead,
+		WaitCost:           *waitCost,
+		ResampleFillMode:   *resampleFill,
+		ResampleMaxFillAge: resampleMaxFillAge,
+		Model:              defaultModelContext(),
+		Timeout:            timeout,
 	})
 	if err != nil {
 		return mapAppError(err)
@@ -95,12 +109,14 @@ func optimizeGlobal(args []string) error {
 
 	if *outputMode == "json" {
 		payload := OptimizeGlobalResult{
-			DurationSeconds:     *duration,
-			BestZone:            out.BestZone,
-			BestWindowStartUTC:  out.BestStart.UTC().Format(time.RFC3339),
-			BestWindowEndUTC:    out.BestEnd.UTC().Format(time.RFC3339),
-			EmissionKg:          out.Emission,
-			ReductionVsWorstPct: out.Reduction,
+			DurationSeconds:           *duration,
+			BestZone:                  out.BestZone,
+			BestWindowStartUTC:        out.BestStart.UTC().Format(time.RFC3339),
+			BestWindowEndUTC:          out.BestEnd.UTC().Format(time.RFC3339),
+			EmissionKg:                out.Emission,
+			ReductionVsWorstPct:       out.Reduction,
+			ResampleFillMode:          out.ResampleFillMode,
+			ResampleMaxFillAgeSeconds: out.ResampleMaxFillAgeSeconds,
 		}
 
 		data, err := json.MarshalIndent(payload, "", "  ")
@@ -117,5 +133,6 @@ func optimizeGlobal(args []string) error {
 	fmt.Printf("Zone: %s\n", out.BestZone)
 	fmt.Printf("Emission: %.3f kg\n", out.Emission)
 	fmt.Printf("Improvement vs worst plan: %.2f %%\n", out.Reduction)
+	fmt.Printf("Resample mode: %s (max fill age: %ds)\n", out.ResampleFillMode, out.ResampleMaxFillAgeSeconds)
 	return nil
 }

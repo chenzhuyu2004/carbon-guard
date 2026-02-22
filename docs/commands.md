@@ -130,7 +130,12 @@ carbon-guard optimize-global --zones <Z1,Z2,...> --duration <seconds> [flags]
 
 ### Flags
 
-Same as `optimize`, including `--config`.
+Same as `optimize`, including `--config`, plus:
+
+| Flag | Type | Default | Required | Description |
+| --- | --- | --- | --- | --- |
+| `--resample-fill` | string | `forward` | No | Cross-zone resample fill mode: `forward` or `strict`. |
+| `--resample-max-fill-age` | duration | `""` | No | Max forward-fill age. Empty means default `2*step` inferred from forecast cadence. Ignored when `--resample-fill strict`. |
 
 When `--wait-cost > 0`, both `optimize` and `optimize-global` minimize:
 

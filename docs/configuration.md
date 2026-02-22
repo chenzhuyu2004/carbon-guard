@@ -91,10 +91,16 @@ carbon-guard optimize \
 - `--timeout` (default: `30s`)
 - `--config` (optional JSON defaults)
 
+`optimize-global` additionally supports:
+
+- `--resample-fill` (`forward|strict`, default `forward`)
+- `--resample-max-fill-age` (Go duration, empty means default `2*step`)
+
 Example:
 
 ```bash
 carbon-guard optimize --zones DE,FR --duration 1200 --timeout 45s
+carbon-guard optimize-global --zones DE,FR,PL --duration 1800 --resample-fill strict
 ```
 
 ## Scheduling Objective

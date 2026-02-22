@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,6 +28,9 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 		return OptimizeGlobalOutput{}, err
 	}
 	if err := validateWaitCost(in.WaitCost); err != nil {
+		return OptimizeGlobalOutput{}, err
+	}
+	if err := validateResampleConfig(in.ResampleFillMode, in.ResampleMaxFillAge); err != nil {
 		return OptimizeGlobalOutput{}, err
 	}
 	if in.Timeout <= 0 {
@@ -93,7 +97,13 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 	}
 
 	step := scheduling.InferResampleStep(zoneForecasts)
-	timeAxis, alignedForecasts := scheduling.BuildResampledIntersection(in.Zones, zoneForecasts, step)
+	resampleOptions := resolveResampleOptions(in, step)
+	timeAxis, alignedForecasts := scheduling.BuildResampledIntersectionWithOptions(
+		in.Zones,
+		zoneForecasts,
+		step,
+		resampleOptions,
+	)
 	if len(timeAxis) == 0 {
 		return OptimizeGlobalOutput{}, fmt.Errorf("%w: no common timestamps across zones", ErrNoValidWindow)
 	}
@@ -156,10 +166,35 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 	}
 
 	return OptimizeGlobalOutput{
-		BestZone:  bestZone,
-		BestStart: bestStart.UTC(),
-		BestEnd:   bestStart.Add(time.Duration(in.Duration) * time.Second).UTC(),
-		Emission:  bestEmission,
-		Reduction: reduction,
+		BestZone:                  bestZone,
+		BestStart:                 bestStart.UTC(),
+		BestEnd:                   bestStart.Add(time.Duration(in.Duration) * time.Second).UTC(),
+		Emission:                  bestEmission,
+		Reduction:                 reduction,
+		ResampleFillMode:          string(resampleOptions.FillMode),
+		ResampleMaxFillAgeSeconds: int64(resampleOptions.MaxFillAge.Round(time.Second).Seconds()),
 	}, nil
+}
+
+func resolveResampleOptions(in OptimizeGlobalInput, step time.Duration) scheduling.ResampleOptions {
+	mode := strings.TrimSpace(strings.ToLower(in.ResampleFillMode))
+	if mode == "" {
+		mode = string(scheduling.FillModeForward)
+	}
+
+	options := scheduling.ResampleOptions{}
+	switch mode {
+	case string(scheduling.FillModeStrict):
+		options.FillMode = scheduling.FillModeStrict
+		options.MaxFillAge = 0
+	default:
+		options.FillMode = scheduling.FillModeForward
+		if in.ResampleMaxFillAge > 0 {
+			options.MaxFillAge = in.ResampleMaxFillAge
+		} else {
+			options.MaxFillAge = 2 * step
+		}
+	}
+
+	return options
 }

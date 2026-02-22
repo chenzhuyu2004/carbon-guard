@@ -96,18 +96,22 @@ type OptimizeOutput struct {
 }
 
 type OptimizeGlobalInput struct {
-	Zones     []string
-	Duration  int
-	Lookahead int
-	WaitCost  float64
-	Model     ModelContext
-	Timeout   time.Duration
+	Zones              []string
+	Duration           int
+	Lookahead          int
+	WaitCost           float64
+	ResampleFillMode   string
+	ResampleMaxFillAge time.Duration
+	Model              ModelContext
+	Timeout            time.Duration
 }
 
 type OptimizeGlobalOutput struct {
-	BestZone  string
-	BestStart time.Time
-	BestEnd   time.Time
-	Emission  float64
-	Reduction float64
+	BestZone                  string
+	BestStart                 time.Time
+	BestEnd                   time.Time
+	Emission                  float64
+	Reduction                 float64
+	ResampleFillMode          string
+	ResampleMaxFillAgeSeconds int64
 }
