@@ -2,7 +2,7 @@
 
 **The CLI that guilt-trips your CI pipeline into sustainability.**
 
-![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?logo=go&logoColor=white)
+![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 ![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)
 ![CodeQL](https://img.shields.io/badge/Security-CodeQL-black)
