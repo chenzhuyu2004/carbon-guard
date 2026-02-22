@@ -84,7 +84,11 @@ func optimizeGlobal(args []string) error {
 		resampleMaxFillAge = parsed
 	}
 
-	resolvedZones, err := resolveZones(*zones, *zoneMode, defaults.Zones)
+	resolvedZones, err := resolveZones(*zones, *zoneMode, defaults.Zones, autoHints{
+		ZoneHint:     defaults.ZoneHint,
+		CountryHint:  defaults.CountryHint,
+		TimezoneHint: defaults.TimezoneHint,
+	})
 	if err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
 	}

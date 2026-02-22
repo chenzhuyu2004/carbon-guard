@@ -62,7 +62,11 @@ func runAware(args []string) error {
 	if effectiveEnter > effectiveExit {
 		return cgerrors.Newf(cgerrors.InputError, "threshold-enter must be <= threshold-exit")
 	}
-	resolvedZone, err := resolveZone(*zone, *zoneMode, defaults.Zone)
+	resolvedZone, err := resolveZone(*zone, *zoneMode, defaults.Zone, autoHints{
+		ZoneHint:     defaults.ZoneHint,
+		CountryHint:  defaults.CountryHint,
+		TimezoneHint: defaults.TimezoneHint,
+	})
 	if err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
 	}

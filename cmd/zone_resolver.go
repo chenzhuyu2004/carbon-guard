@@ -12,8 +12,12 @@ const (
 	zoneModeFallback = "fallback"
 	zoneModeAuto     = "auto"
 
-	envZoneDefault  = "CARBON_GUARD_ZONE"
-	envZonesDefault = "CARBON_GUARD_ZONES"
+	envZoneDefault    = "CARBON_GUARD_ZONE"
+	envZonesDefault   = "CARBON_GUARD_ZONES"
+	envZoneHint       = "CARBON_GUARD_ZONE_HINT"
+	envCountryHint    = "CARBON_GUARD_COUNTRY_HINT"
+	envTimezoneHint   = "CARBON_GUARD_TIMEZONE_HINT"
+	envTimezoneSystem = "TZ"
 )
 
 var zonePattern = regexp.MustCompile(`^[A-Z]{2}(?:-[A-Z0-9]+)*$`)
@@ -34,7 +38,13 @@ type resolvedZones struct {
 	FallbackUsed bool
 }
 
-func resolveZone(explicit string, mode string, configZone string) (resolvedZone, error) {
+type autoHints struct {
+	ZoneHint     string
+	CountryHint  string
+	TimezoneHint string
+}
+
+func resolveZone(explicit string, mode string, configZone string, hints autoHints) (resolvedZone, error) {
 	mode, err := normalizeZoneMode(mode)
 	if err != nil {
 		return resolvedZone{}, err
@@ -89,7 +99,9 @@ func resolveZone(explicit string, mode string, configZone string) (resolvedZone,
 	}
 
 	if mode == zoneModeAuto {
-		if auto, ok := resolveAutoZone(); ok {
+		if auto, ok, err := resolveAutoZone(hints); err != nil {
+			return resolvedZone{}, err
+		} else if ok {
 			return auto, nil
 		}
 	}
@@ -100,7 +112,7 @@ func resolveZone(explicit string, mode string, configZone string) (resolvedZone,
 	return resolvedZone{}, fmt.Errorf("zone is required (set --zone or %s or config zone)", envZoneDefault)
 }
 
-func resolveZones(explicit string, mode string, configZones string) (resolvedZones, error) {
+func resolveZones(explicit string, mode string, configZones string, hints autoHints) (resolvedZones, error) {
 	mode, err := normalizeZoneMode(mode)
 	if err != nil {
 		return resolvedZones{}, err
@@ -155,7 +167,9 @@ func resolveZones(explicit string, mode string, configZones string) (resolvedZon
 	}
 
 	if mode == zoneModeAuto {
-		if auto, ok := resolveAutoZone(); ok {
+		if auto, ok, err := resolveAutoZone(hints); err != nil {
+			return resolvedZones{}, err
+		} else if ok {
 			return resolvedZones{
 				Zones:        []string{auto.Zone},
 				Source:       auto.Source,
@@ -236,7 +250,63 @@ func normalizeZoneAlias(value string) string {
 	}
 }
 
-func resolveAutoZone() (resolvedZone, bool) {
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func resolveAutoZone(hints autoHints) (resolvedZone, bool, error) {
+	if zoneRaw := firstNonEmpty(strings.TrimSpace(hints.ZoneHint), strings.TrimSpace(os.Getenv(envZoneHint))); zoneRaw != "" {
+		zone, ok, err := parseSingleZone(zoneRaw)
+		if err != nil {
+			return resolvedZone{}, false, fmt.Errorf("invalid zone hint: %w", err)
+		}
+		if ok {
+			return resolvedZone{
+				Zone:         zone,
+				Source:       "auto:zone-hint",
+				Confidence:   "high",
+				Reason:       "from zone hint",
+				FallbackUsed: true,
+			}, true, nil
+		}
+	}
+
+	if countryRaw := firstNonEmpty(strings.TrimSpace(hints.CountryHint), strings.TrimSpace(os.Getenv(envCountryHint))); countryRaw != "" {
+		country := strings.ToUpper(strings.TrimSpace(countryRaw))
+		zone := countryToAutoZone(country)
+		if zone == "" {
+			return resolvedZone{}, false, fmt.Errorf("invalid country hint %q", countryRaw)
+		}
+		return resolvedZone{
+			Zone:         zone,
+			Source:       "auto:country-hint",
+			Confidence:   "medium",
+			Reason:       "from country hint",
+			FallbackUsed: true,
+		}, true, nil
+	}
+
+	if tzRaw := firstNonEmpty(strings.TrimSpace(hints.TimezoneHint), strings.TrimSpace(os.Getenv(envTimezoneHint))); tzRaw != "" {
+		if country, ok := countryFromTZ(tzRaw); ok {
+			zone := countryToAutoZone(country)
+			if zone != "" {
+				return resolvedZone{
+					Zone:         zone,
+					Source:       "auto:timezone-hint",
+					Confidence:   "medium",
+					Reason:       "from timezone hint",
+					FallbackUsed: true,
+				}, true, nil
+			}
+		}
+		return resolvedZone{}, false, fmt.Errorf("invalid timezone hint %q", tzRaw)
+	}
+
 	if country, source, reason, ok := detectCountryHint(); ok {
 		zone := countryToAutoZone(country)
 		if zone != "" {
@@ -246,10 +316,10 @@ func resolveAutoZone() (resolvedZone, bool) {
 				Confidence:   "low",
 				Reason:       reason,
 				FallbackUsed: true,
-			}, true
+			}, true, nil
 		}
 	}
-	return resolvedZone{}, false
+	return resolvedZone{}, false, nil
 }
 
 func detectCountryHint() (string, string, string, bool) {
@@ -258,8 +328,8 @@ func detectCountryHint() (string, string, string, bool) {
 			return country, "auto:locale", "inferred from " + key, true
 		}
 	}
-	if country, ok := countryFromTZ(os.Getenv("TZ")); ok {
-		return country, "auto:tz", "inferred from TZ", true
+	if country, ok := countryFromTZ(os.Getenv(envTimezoneSystem)); ok {
+		return country, "auto:tz", "inferred from " + envTimezoneSystem, true
 	}
 	return "", "", "", false
 }

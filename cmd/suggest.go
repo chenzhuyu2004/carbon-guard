@@ -44,7 +44,11 @@ func suggest(args []string) error {
 	if *waitCost < 0 {
 		return cgerrors.Newf(cgerrors.InputError, "wait-cost must be >= 0")
 	}
-	resolvedZone, err := resolveZone(*zone, *zoneMode, defaults.Zone)
+	resolvedZone, err := resolveZone(*zone, *zoneMode, defaults.Zone, autoHints{
+		ZoneHint:     defaults.ZoneHint,
+		CountryHint:  defaults.CountryHint,
+		TimezoneHint: defaults.TimezoneHint,
+	})
 	if err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
 	}

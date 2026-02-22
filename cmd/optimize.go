@@ -78,7 +78,11 @@ func optimize(args []string) error {
 	if err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
 	}
-	resolvedZones, err := resolveZones(*zones, *zoneMode, defaults.Zones)
+	resolvedZones, err := resolveZones(*zones, *zoneMode, defaults.Zones, autoHints{
+		ZoneHint:     defaults.ZoneHint,
+		CountryHint:  defaults.CountryHint,
+		TimezoneHint: defaults.TimezoneHint,
+	})
 	if err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
 	}

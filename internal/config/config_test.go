@@ -15,6 +15,9 @@ func TestResolveDefaults(t *testing.T) {
 	t.Setenv(EnvZone, "")
 	t.Setenv(EnvZones, "")
 	t.Setenv(EnvZoneMode, "")
+	t.Setenv(EnvZoneHint, "")
+	t.Setenv(EnvCountryHint, "")
+	t.Setenv(EnvTimezoneHint, "")
 
 	got, err := Resolve("")
 	if err != nil {
@@ -42,6 +45,15 @@ func TestResolveDefaults(t *testing.T) {
 	if got.ZoneMode != DefaultZoneMode {
 		t.Fatalf("ZoneMode = %q, expected %q", got.ZoneMode, DefaultZoneMode)
 	}
+	if got.ZoneHint != DefaultZoneHint {
+		t.Fatalf("ZoneHint = %q, expected %q", got.ZoneHint, DefaultZoneHint)
+	}
+	if got.CountryHint != DefaultCountryHint {
+		t.Fatalf("CountryHint = %q, expected %q", got.CountryHint, DefaultCountryHint)
+	}
+	if got.TimezoneHint != DefaultTimezoneHint {
+		t.Fatalf("TimezoneHint = %q, expected %q", got.TimezoneHint, DefaultTimezoneHint)
+	}
 }
 
 func TestResolveConfigAndEnvOverride(t *testing.T) {
@@ -54,7 +66,10 @@ func TestResolveConfigAndEnvOverride(t *testing.T) {
   "output": "json",
   "zone": "DE",
   "zones": "DE,FR",
-  "zone_mode": "auto"
+  "zone_mode": "auto",
+  "zone_hint": "FR",
+  "country_hint": "DE",
+  "timezone_hint": "Europe/Berlin"
 }`
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("WriteFile() error: %v", err)
@@ -66,6 +81,9 @@ func TestResolveConfigAndEnvOverride(t *testing.T) {
 	t.Setenv(EnvZone, "US-NY")
 	t.Setenv(EnvZones, "US-NY,CA-ON")
 	t.Setenv(EnvZoneMode, "fallback")
+	t.Setenv(EnvZoneHint, "CA-ON")
+	t.Setenv(EnvCountryHint, "US")
+	t.Setenv(EnvTimezoneHint, "America/New_York")
 
 	got, err := Resolve("")
 	if err != nil {
@@ -95,6 +113,15 @@ func TestResolveConfigAndEnvOverride(t *testing.T) {
 	}
 	if got.ZoneMode != "fallback" {
 		t.Fatalf("ZoneMode = %q, expected %q", got.ZoneMode, "fallback")
+	}
+	if got.ZoneHint != "CA-ON" {
+		t.Fatalf("ZoneHint = %q, expected %q", got.ZoneHint, "CA-ON")
+	}
+	if got.CountryHint != "US" {
+		t.Fatalf("CountryHint = %q, expected %q", got.CountryHint, "US")
+	}
+	if got.TimezoneHint != "America/New_York" {
+		t.Fatalf("TimezoneHint = %q, expected %q", got.TimezoneHint, "America/New_York")
 	}
 }
 

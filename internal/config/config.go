@@ -9,57 +9,72 @@ import (
 )
 
 const (
-	EnvConfigPath = "CARBON_GUARD_CONFIG"
-	EnvCacheDir   = "CARBON_GUARD_CACHE_DIR"
-	EnvCacheTTL   = "CARBON_GUARD_CACHE_TTL"
-	EnvTimeout    = "CARBON_GUARD_TIMEOUT"
-	EnvOutput     = "CARBON_GUARD_OUTPUT"
-	EnvZone       = "CARBON_GUARD_ZONE"
-	EnvZones      = "CARBON_GUARD_ZONES"
-	EnvZoneMode   = "CARBON_GUARD_ZONE_MODE"
+	EnvConfigPath   = "CARBON_GUARD_CONFIG"
+	EnvCacheDir     = "CARBON_GUARD_CACHE_DIR"
+	EnvCacheTTL     = "CARBON_GUARD_CACHE_TTL"
+	EnvTimeout      = "CARBON_GUARD_TIMEOUT"
+	EnvOutput       = "CARBON_GUARD_OUTPUT"
+	EnvZone         = "CARBON_GUARD_ZONE"
+	EnvZones        = "CARBON_GUARD_ZONES"
+	EnvZoneMode     = "CARBON_GUARD_ZONE_MODE"
+	EnvZoneHint     = "CARBON_GUARD_ZONE_HINT"
+	EnvCountryHint  = "CARBON_GUARD_COUNTRY_HINT"
+	EnvTimezoneHint = "CARBON_GUARD_TIMEZONE_HINT"
 )
 
 const (
-	DefaultCacheDir = "~/.carbon-guard"
-	DefaultCacheTTL = "10m"
-	DefaultTimeout  = "30s"
-	DefaultOutput   = "text"
-	DefaultZone     = ""
-	DefaultZones    = ""
-	DefaultZoneMode = "fallback"
+	DefaultCacheDir     = "~/.carbon-guard"
+	DefaultCacheTTL     = "10m"
+	DefaultTimeout      = "30s"
+	DefaultOutput       = "text"
+	DefaultZone         = ""
+	DefaultZones        = ""
+	DefaultZoneMode     = "fallback"
+	DefaultZoneHint     = ""
+	DefaultCountryHint  = ""
+	DefaultTimezoneHint = ""
 )
 
 type Shared struct {
-	ConfigPath string
-	CacheDir   string
-	CacheTTL   string
-	Timeout    string
-	Output     string
-	Zone       string
-	Zones      string
-	ZoneMode   string
+	ConfigPath   string
+	CacheDir     string
+	CacheTTL     string
+	Timeout      string
+	Output       string
+	Zone         string
+	Zones        string
+	ZoneMode     string
+	ZoneHint     string
+	CountryHint  string
+	TimezoneHint string
 }
 
 type fileConfig struct {
-	CacheDir string `json:"cache_dir"`
-	CacheTTL string `json:"cache_ttl"`
-	Timeout  string `json:"timeout"`
-	Output   string `json:"output"`
-	Zone     string `json:"zone"`
-	Zones    string `json:"zones"`
-	ZoneMode string `json:"zone_mode"`
+	CacheDir     string `json:"cache_dir"`
+	CacheTTL     string `json:"cache_ttl"`
+	Timeout      string `json:"timeout"`
+	Output       string `json:"output"`
+	Zone         string `json:"zone"`
+	Zones        string `json:"zones"`
+	ZoneMode     string `json:"zone_mode"`
+	ZoneHint     string `json:"zone_hint"`
+	CountryHint  string `json:"country_hint"`
+	TimezoneHint string `json:"timezone_hint"`
 }
 
 func Resolve(rawConfigPath string) (Shared, error) {
 	cfg := Shared{
-		ConfigPath: "",
-		CacheDir:   DefaultCacheDir,
-		CacheTTL:   DefaultCacheTTL,
-		Timeout:    DefaultTimeout,
-		Output:     DefaultOutput,
-		Zone:       DefaultZone,
-		Zones:      DefaultZones,
-		ZoneMode:   DefaultZoneMode,
+		ConfigPath:   "",
+		CacheDir:     DefaultCacheDir,
+		CacheTTL:     DefaultCacheTTL,
+		Timeout:      DefaultTimeout,
+		Output:       DefaultOutput,
+		Zone:         DefaultZone,
+		Zones:        DefaultZones,
+		ZoneMode:     DefaultZoneMode,
+		ZoneHint:     DefaultZoneHint,
+		CountryHint:  DefaultCountryHint,
+		TimezoneHint: DefaultTimezoneHint,
 	}
 
 	configPath := strings.TrimSpace(rawConfigPath)
@@ -98,6 +113,15 @@ func Resolve(rawConfigPath string) (Shared, error) {
 		if fileCfg.ZoneMode != "" {
 			cfg.ZoneMode = fileCfg.ZoneMode
 		}
+		if fileCfg.ZoneHint != "" {
+			cfg.ZoneHint = fileCfg.ZoneHint
+		}
+		if fileCfg.CountryHint != "" {
+			cfg.CountryHint = fileCfg.CountryHint
+		}
+		if fileCfg.TimezoneHint != "" {
+			cfg.TimezoneHint = fileCfg.TimezoneHint
+		}
 	}
 
 	if v := strings.TrimSpace(os.Getenv(EnvCacheDir)); v != "" {
@@ -120,6 +144,15 @@ func Resolve(rawConfigPath string) (Shared, error) {
 	}
 	if v := strings.TrimSpace(os.Getenv(EnvZoneMode)); v != "" {
 		cfg.ZoneMode = v
+	}
+	if v := strings.TrimSpace(os.Getenv(EnvZoneHint)); v != "" {
+		cfg.ZoneHint = v
+	}
+	if v := strings.TrimSpace(os.Getenv(EnvCountryHint)); v != "" {
+		cfg.CountryHint = v
+	}
+	if v := strings.TrimSpace(os.Getenv(EnvTimezoneHint)); v != "" {
+		cfg.TimezoneHint = v
 	}
 
 	return cfg, nil
