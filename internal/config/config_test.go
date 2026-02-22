@@ -12,6 +12,9 @@ func TestResolveDefaults(t *testing.T) {
 	t.Setenv(EnvCacheTTL, "")
 	t.Setenv(EnvTimeout, "")
 	t.Setenv(EnvOutput, "")
+	t.Setenv(EnvZone, "")
+	t.Setenv(EnvZones, "")
+	t.Setenv(EnvZoneMode, "")
 
 	got, err := Resolve("")
 	if err != nil {
@@ -30,6 +33,15 @@ func TestResolveDefaults(t *testing.T) {
 	if got.Output != DefaultOutput {
 		t.Fatalf("Output = %q, expected %q", got.Output, DefaultOutput)
 	}
+	if got.Zone != DefaultZone {
+		t.Fatalf("Zone = %q, expected %q", got.Zone, DefaultZone)
+	}
+	if got.Zones != DefaultZones {
+		t.Fatalf("Zones = %q, expected %q", got.Zones, DefaultZones)
+	}
+	if got.ZoneMode != DefaultZoneMode {
+		t.Fatalf("ZoneMode = %q, expected %q", got.ZoneMode, DefaultZoneMode)
+	}
 }
 
 func TestResolveConfigAndEnvOverride(t *testing.T) {
@@ -39,7 +51,10 @@ func TestResolveConfigAndEnvOverride(t *testing.T) {
   "cache_dir": "/tmp/from-file",
   "cache_ttl": "15m",
   "timeout": "45s",
-  "output": "json"
+  "output": "json",
+  "zone": "DE",
+  "zones": "DE,FR",
+  "zone_mode": "auto"
 }`
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("WriteFile() error: %v", err)
@@ -48,6 +63,9 @@ func TestResolveConfigAndEnvOverride(t *testing.T) {
 	t.Setenv(EnvConfigPath, path)
 	t.Setenv(EnvCacheTTL, "20m")
 	t.Setenv(EnvOutput, "text")
+	t.Setenv(EnvZone, "US-NY")
+	t.Setenv(EnvZones, "US-NY,CA-ON")
+	t.Setenv(EnvZoneMode, "fallback")
 
 	got, err := Resolve("")
 	if err != nil {
@@ -68,6 +86,15 @@ func TestResolveConfigAndEnvOverride(t *testing.T) {
 	}
 	if got.Output != "text" {
 		t.Fatalf("Output = %q, expected %q", got.Output, "text")
+	}
+	if got.Zone != "US-NY" {
+		t.Fatalf("Zone = %q, expected %q", got.Zone, "US-NY")
+	}
+	if got.Zones != "US-NY,CA-ON" {
+		t.Fatalf("Zones = %q, expected %q", got.Zones, "US-NY,CA-ON")
+	}
+	if got.ZoneMode != "fallback" {
+		t.Fatalf("ZoneMode = %q, expected %q", got.ZoneMode, "fallback")
 	}
 }
 

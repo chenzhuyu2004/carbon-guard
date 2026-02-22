@@ -14,6 +14,9 @@ const (
 	EnvCacheTTL   = "CARBON_GUARD_CACHE_TTL"
 	EnvTimeout    = "CARBON_GUARD_TIMEOUT"
 	EnvOutput     = "CARBON_GUARD_OUTPUT"
+	EnvZone       = "CARBON_GUARD_ZONE"
+	EnvZones      = "CARBON_GUARD_ZONES"
+	EnvZoneMode   = "CARBON_GUARD_ZONE_MODE"
 )
 
 const (
@@ -21,6 +24,9 @@ const (
 	DefaultCacheTTL = "10m"
 	DefaultTimeout  = "30s"
 	DefaultOutput   = "text"
+	DefaultZone     = ""
+	DefaultZones    = ""
+	DefaultZoneMode = "fallback"
 )
 
 type Shared struct {
@@ -29,6 +35,9 @@ type Shared struct {
 	CacheTTL   string
 	Timeout    string
 	Output     string
+	Zone       string
+	Zones      string
+	ZoneMode   string
 }
 
 type fileConfig struct {
@@ -36,6 +45,9 @@ type fileConfig struct {
 	CacheTTL string `json:"cache_ttl"`
 	Timeout  string `json:"timeout"`
 	Output   string `json:"output"`
+	Zone     string `json:"zone"`
+	Zones    string `json:"zones"`
+	ZoneMode string `json:"zone_mode"`
 }
 
 func Resolve(rawConfigPath string) (Shared, error) {
@@ -45,6 +57,9 @@ func Resolve(rawConfigPath string) (Shared, error) {
 		CacheTTL:   DefaultCacheTTL,
 		Timeout:    DefaultTimeout,
 		Output:     DefaultOutput,
+		Zone:       DefaultZone,
+		Zones:      DefaultZones,
+		ZoneMode:   DefaultZoneMode,
 	}
 
 	configPath := strings.TrimSpace(rawConfigPath)
@@ -74,6 +89,15 @@ func Resolve(rawConfigPath string) (Shared, error) {
 		if fileCfg.Output != "" {
 			cfg.Output = fileCfg.Output
 		}
+		if fileCfg.Zone != "" {
+			cfg.Zone = fileCfg.Zone
+		}
+		if fileCfg.Zones != "" {
+			cfg.Zones = fileCfg.Zones
+		}
+		if fileCfg.ZoneMode != "" {
+			cfg.ZoneMode = fileCfg.ZoneMode
+		}
 	}
 
 	if v := strings.TrimSpace(os.Getenv(EnvCacheDir)); v != "" {
@@ -87,6 +111,15 @@ func Resolve(rawConfigPath string) (Shared, error) {
 	}
 	if v := strings.TrimSpace(os.Getenv(EnvOutput)); v != "" {
 		cfg.Output = v
+	}
+	if v := strings.TrimSpace(os.Getenv(EnvZone)); v != "" {
+		cfg.Zone = v
+	}
+	if v := strings.TrimSpace(os.Getenv(EnvZones)); v != "" {
+		cfg.Zones = v
+	}
+	if v := strings.TrimSpace(os.Getenv(EnvZoneMode)); v != "" {
+		cfg.ZoneMode = v
 	}
 
 	return cfg, nil

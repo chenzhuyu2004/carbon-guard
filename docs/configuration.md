@@ -28,6 +28,7 @@ These apply to `suggest`, `run-aware`, `optimize`, and `optimize-global`.
 | `CARBON_GUARD_OUTPUT` | Default output mode (`text` or `json`). |
 | `CARBON_GUARD_ZONE` | Default single zone fallback for `suggest` / `run-aware`. |
 | `CARBON_GUARD_ZONES` | Default zone list fallback for `optimize` / `optimize-global`. |
+| `CARBON_GUARD_ZONE_MODE` | Default zone resolution mode (`strict`, `fallback`, `auto`). |
 
 ## Config File (JSON)
 
@@ -40,7 +41,10 @@ Example:
   "cache_dir": "~/.carbon-guard",
   "cache_ttl": "15m",
   "timeout": "45s",
-  "output": "json"
+  "output": "json",
+  "zone": "DE",
+  "zones": "DE,FR,PL",
+  "zone_mode": "fallback"
 }
 ```
 
@@ -50,6 +54,9 @@ Supported keys:
 - `cache_ttl`
 - `timeout`
 - `output`
+- `zone`
+- `zones`
+- `zone_mode`
 
 ## Precedence Rules
 
@@ -59,6 +66,13 @@ Shared defaults resolve in this order:
 2. Environment variables
 3. Config file
 4. Built-in defaults
+
+Zone-specific resolution uses:
+
+1. CLI (`--zone` / `--zones`)
+2. Environment (`CARBON_GUARD_ZONE` / `CARBON_GUARD_ZONES`)
+3. Config (`zone` / `zones`)
+4. Auto inference (only when `zone_mode=auto`)
 
 ## Cache Configuration
 
@@ -84,7 +98,7 @@ Commands with zone inputs support:
 Behavior:
 
 1. `strict`: zone(s) must be provided via CLI (`--zone` / `--zones`).
-2. `fallback`: if CLI zone flags are empty, commands use `CARBON_GUARD_ZONE` / `CARBON_GUARD_ZONES`.
+2. `fallback`: if CLI zone flags are empty, commands use env defaults first, then config defaults.
 3. `auto`: run fallback first, then attempt locale/timezone inference using `LC_ALL`, `LC_MESSAGES`, `LANG`, and `TZ`.
 
 Examples:

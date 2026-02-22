@@ -24,6 +24,8 @@ type OptimizeResult struct {
 	Zones               []OptimizeZoneOutput `json:"zones"`
 	ZonesSource         string               `json:"zones_source"`
 	ZonesConfidence     string               `json:"zones_confidence"`
+	ZonesReason         string               `json:"zones_reason"`
+	ZonesFallbackUsed   bool                 `json:"zones_fallback_used"`
 	BestZone            string               `json:"best_zone"`
 	BestWindowStartUTC  string               `json:"best_window_start_utc"`
 	BestWindowEndUTC    string               `json:"best_window_end_utc"`
@@ -42,7 +44,7 @@ func optimize(args []string) error {
 
 	addConfigFlag(fs, defaults.ConfigPath)
 	zones := fs.String("zones", "", "comma-separated Electricity Maps zones")
-	zoneMode := fs.String("zone-mode", "fallback", "zone resolution mode: strict|fallback|auto")
+	zoneMode := fs.String("zone-mode", defaults.ZoneMode, "zone resolution mode: strict|fallback|auto")
 	duration := fs.Int("duration", 0, "duration in seconds")
 	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")
 	waitCost := fs.Float64("wait-cost", 0, "waiting penalty in kgCO2 per hour")
@@ -76,7 +78,7 @@ func optimize(args []string) error {
 	if err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
 	}
-	resolvedZones, err := resolveZones(*zones, *zoneMode)
+	resolvedZones, err := resolveZones(*zones, *zoneMode, defaults.Zones)
 	if err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
 	}
@@ -121,6 +123,8 @@ func optimize(args []string) error {
 			Zones:               zoneOutputs,
 			ZonesSource:         resolvedZones.Source,
 			ZonesConfidence:     resolvedZones.Confidence,
+			ZonesReason:         resolvedZones.Reason,
+			ZonesFallbackUsed:   resolvedZones.FallbackUsed,
 			BestZone:            out.Best.Zone,
 			BestWindowStartUTC:  out.Best.BestStart.UTC().Format(time.RFC3339),
 			BestWindowEndUTC:    out.Best.BestEnd.UTC().Format(time.RFC3339),
@@ -136,7 +140,14 @@ func optimize(args []string) error {
 		return nil
 	}
 
-	fmt.Printf("Resolved Zones: %v (source: %s, confidence: %s)\n", resolvedZones.Zones, resolvedZones.Source, resolvedZones.Confidence)
+	fmt.Printf(
+		"Resolved Zones: %v (source: %s, confidence: %s, reason: %s, fallback_used: %t)\n",
+		resolvedZones.Zones,
+		resolvedZones.Source,
+		resolvedZones.Confidence,
+		resolvedZones.Reason,
+		resolvedZones.FallbackUsed,
+	)
 	fmt.Printf("Zone comparison (duration=%ds):\n\n", *duration)
 	for _, result := range out.Results {
 		fmt.Printf("%s -> %.3f kg\n", result.Zone, result.Emission)
