@@ -22,15 +22,21 @@ type OptimizeGlobalResult struct {
 }
 
 func optimizeGlobal(args []string) error {
+	defaults, err := resolveSharedDefaults(args)
+	if err != nil {
+		return cgerrors.New(err, cgerrors.InputError)
+	}
+
 	fs := flag.NewFlagSet("optimize-global", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 
+	addConfigFlag(fs, defaults.ConfigPath)
 	zones := fs.String("zones", "", "comma-separated Electricity Maps zones")
 	duration := fs.Int("duration", 0, "duration in seconds")
 	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")
-	timeoutStr := addTimeoutFlag(fs)
-	outputMode := addOutputFlag(fs)
-	cacheDirRaw, cacheTTLRaw := addCacheFlags(fs)
+	timeoutStr := addTimeoutFlag(fs, defaults.Timeout)
+	outputMode := addOutputFlag(fs, defaults.Output)
+	cacheDirRaw, cacheTTLRaw := addCacheFlags(fs, defaults.CacheDir, defaults.CacheTTL)
 
 	if err := fs.Parse(args); err != nil {
 		return cgerrors.New(err, cgerrors.InputError)

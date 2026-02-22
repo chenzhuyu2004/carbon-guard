@@ -26,6 +26,20 @@ Cause:
 Fix:
 - Use seconds as integer values (for example `300`).
 
+## `parse config file ...` or `read config file ...`
+
+Cause:
+- `--config` / `CARBON_GUARD_CONFIG` points to a missing or invalid JSON file.
+
+Fix:
+1. Verify path exists and is readable.
+2. Use valid JSON and supported keys only:
+   - `cache_dir`
+   - `cache_ttl`
+   - `timeout`
+   - `output`
+3. Run with `--config <path>` explicitly to confirm which file is being used.
+
 ## `missing ELECTRICITY_MAPS_API_KEY`
 
 Cause:

@@ -54,7 +54,11 @@ func detectJSONOutput(command string, args []string) bool {
 		if mode, ok := parseStringFlag(args, "output"); ok {
 			return strings.EqualFold(mode, "json")
 		}
-		return false
+		defaults, err := resolveSharedDefaults(args)
+		if err != nil {
+			return false
+		}
+		return strings.EqualFold(defaults.Output, "json")
 	default:
 		return false
 	}

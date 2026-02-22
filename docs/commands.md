@@ -7,6 +7,7 @@ This page is the authoritative reference for all commands.
 - Use `--json` on `run` for machine-readable output.
 - Use `--output text|json` on `optimize` and `optimize-global`.
 - Commands using live carbon data require `ELECTRICITY_MAPS_API_KEY`.
+- Shared defaults can be injected via config/env for `suggest`, `run-aware`, `optimize`, and `optimize-global`.
 
 ## `run`
 
@@ -63,6 +64,9 @@ carbon-guard suggest --zone <ZONE> --duration <seconds> [flags]
 | `--duration` | int | `0` | Yes | Runtime in seconds. |
 | `--threshold` | float | `0.35` | No | Current CI threshold (`kgCO2/kWh`). |
 | `--lookahead` | int | `6` | No | Forecast lookahead in hours. |
+| `--config` | string | `""` | No | Path to JSON config file for shared defaults. |
+| `--cache-dir` | string | `~/.carbon-guard` | No | Forecast cache directory. |
+| `--cache-ttl` | duration | `10m` | No | Cache TTL (Go duration format). |
 
 ## `run-aware`
 
@@ -83,6 +87,7 @@ carbon-guard run-aware --zone <ZONE> --duration <seconds> [flags]
 | `--threshold` | float | `0.35` | No | CI threshold (`kgCO2/kWh`). |
 | `--lookahead` | int | `6` | No | Forecast lookahead in hours. |
 | `--max-wait` | float | `6` | No | Maximum wait time in hours. |
+| `--config` | string | `""` | No | Path to JSON config file for shared defaults. |
 | `--cache-dir` | string | `~/.carbon-guard` | No | Forecast cache directory. |
 | `--cache-ttl` | duration | `10m` | No | Cache TTL (Go duration format). |
 
@@ -103,6 +108,7 @@ carbon-guard optimize --zones <Z1,Z2,...> --duration <seconds> [flags]
 | `--zones` | string | `""` | Yes | Comma-separated zones, whitespace-safe. |
 | `--duration` | int | `0` | Yes | Runtime in seconds. |
 | `--lookahead` | int | `6` | No | Forecast lookahead in hours. |
+| `--config` | string | `""` | No | Path to JSON config file for shared defaults. |
 | `--timeout` | duration | `30s` | No | Command timeout (Go duration). |
 | `--output` | string | `text` | No | `text` or `json`. |
 | `--cache-dir` | string | `~/.carbon-guard` | No | Forecast cache directory. |
@@ -120,7 +126,7 @@ carbon-guard optimize-global --zones <Z1,Z2,...> --duration <seconds> [flags]
 
 ### Flags
 
-Same as `optimize`.
+Same as `optimize`, including `--config`.
 
 ## Exit Codes
 
