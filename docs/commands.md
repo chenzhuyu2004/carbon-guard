@@ -12,6 +12,7 @@ This page is the authoritative reference for all commands.
   - `strict`: zone(s) must be passed via CLI flag.
   - `fallback`: if CLI flag is empty, resolve from env (`CARBON_GUARD_ZONE` / `CARBON_GUARD_ZONES`) then config (`zone` / `zones`).
   - `auto`: fallback behavior plus auto hints (`CARBON_GUARD_ZONE_HINT` / `CARBON_GUARD_COUNTRY_HINT` / `CARBON_GUARD_TIMEZONE_HINT`) and locale/timezone heuristic (`LANG` / `LC_*` / `TZ`).
+  - `country_hint` applies only to curated one-zone defaults; for multi-zone countries prefer `zone_hint` or `timezone_hint`.
 
 ## `run`
 

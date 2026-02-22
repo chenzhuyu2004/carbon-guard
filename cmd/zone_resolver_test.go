@@ -80,11 +80,11 @@ func TestResolveZoneAutoHintPriority(t *testing.T) {
 
 	t.Run("country hint when no zone hint", func(t *testing.T) {
 		clearZoneHintEnv(t)
-		got, err := resolveZone("", zoneModeAuto, "", autoHints{CountryHint: "us"})
+		got, err := resolveZone("", zoneModeAuto, "", autoHints{CountryHint: "de"})
 		if err != nil {
 			t.Fatalf("resolveZone() unexpected error: %v", err)
 		}
-		if got.Zone != "US-NY" || got.Source != "auto:country-hint" {
+		if got.Zone != "DE" || got.Source != "auto:country-hint" {
 			t.Fatalf("unexpected resolution: %#v", got)
 		}
 	})
@@ -139,6 +139,16 @@ func TestResolveZoneAutoFallback(t *testing.T) {
 			t.Fatalf("unexpected resolution: %#v", got)
 		}
 	})
+
+	t.Run("unsupported locale country requires explicit hint", func(t *testing.T) {
+		clearZoneHintEnv(t)
+		t.Setenv("LANG", "en_US.UTF-8")
+
+		_, err := resolveZone("", zoneModeAuto, "", autoHints{})
+		if err == nil {
+			t.Fatalf("expected error for unsupported locale-only inference")
+		}
+	})
 }
 
 func TestResolveZoneValidation(t *testing.T) {
@@ -163,6 +173,11 @@ func TestResolveZoneValidation(t *testing.T) {
 	_, err = resolveZone("", zoneModeAuto, "", autoHints{CountryHint: "bad"})
 	if err == nil {
 		t.Fatalf("expected invalid country hint error")
+	}
+
+	_, err = resolveZone("", zoneModeAuto, "", autoHints{CountryHint: "US"})
+	if err == nil {
+		t.Fatalf("expected unsupported country hint error")
 	}
 
 	_, err = resolveZone("", zoneModeAuto, "", autoHints{TimezoneHint: "Mars/Base"})

@@ -25,6 +25,7 @@ This is the canonical documentation hub for Carbon Guard.
 
 - [`architecture.md`](architecture.md): layered architecture and dependency boundaries.
 - [`release.md`](release.md): release and tagging process.
+- [`optimization-roadmap.md`](optimization-roadmap.md): prioritized optimization backlog and milestone plan.
 
 ---
 
