@@ -122,6 +122,37 @@ func TestBuildResampledIntersectionAlignsOffsetSeries(t *testing.T) {
 	}
 }
 
+func TestBuildResampledIntersectionWithOptionsStrictMode(t *testing.T) {
+	zones := []string{"DE", "FR"}
+	de := []ForecastPoint{
+		{Timestamp: time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC), CI: 0.4},
+		{Timestamp: time.Date(2026, 1, 1, 11, 0, 0, 0, time.UTC), CI: 0.5},
+		{Timestamp: time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC), CI: 0.6},
+	}
+	fr := []ForecastPoint{
+		{Timestamp: time.Date(2026, 1, 1, 10, 5, 0, 0, time.UTC), CI: 0.3},
+		{Timestamp: time.Date(2026, 1, 1, 11, 5, 0, 0, time.UTC), CI: 0.4},
+		{Timestamp: time.Date(2026, 1, 1, 12, 5, 0, 0, time.UTC), CI: 0.5},
+	}
+
+	axis, aligned := BuildResampledIntersectionWithOptions(
+		zones,
+		map[string][]ForecastPoint{
+			"DE": de,
+			"FR": fr,
+		},
+		time.Hour,
+		ResampleOptions{FillMode: FillModeStrict},
+	)
+
+	if len(axis) != 0 {
+		t.Fatalf("expected strict mode to produce no common axis, got %d points", len(axis))
+	}
+	if aligned != nil {
+		t.Fatalf("expected aligned map to be nil when strict mode has no intersection")
+	}
+}
+
 func TestInferResampleStepFromForecastData(t *testing.T) {
 	zoneForecasts := map[string][]ForecastPoint{
 		"DE": {

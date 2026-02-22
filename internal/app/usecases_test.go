@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"math"
 	"testing"
 	"time"
 
@@ -166,6 +167,46 @@ func TestOptimizeUsesScoreWhenWaitCostProvided(t *testing.T) {
 	}
 	if out.Results[0].Score > out.Results[1].Score {
 		t.Fatalf("results are not sorted by score ascending")
+	}
+}
+
+func TestSuggestImmediateRunUsesScoreObjective(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second).Add(5 * time.Minute)
+	a := New(&fakeProvider{
+		currentByZone: map[string]float64{"DE": 0.6},
+		forecastByZone: map[string][]scheduling.ForecastPoint{
+			"DE": {
+				{Timestamp: now, CI: 0.6},
+				{Timestamp: now.Add(time.Hour), CI: 0.1},
+				{Timestamp: now.Add(2 * time.Hour), CI: 0.1},
+			},
+		},
+	})
+
+	out, err := a.Suggest(context.Background(), SuggestInput{
+		Zone:      "DE",
+		Duration:  3600,
+		Threshold: 1.0,
+		Lookahead: 3,
+		WaitCost:  0.2,
+		Model: ModelContext{
+			Runner: "ubuntu",
+			Load:   0.6,
+			PUE:    1.2,
+		},
+	})
+	if err != nil {
+		t.Fatalf("Suggest() unexpected error: %v", err)
+	}
+
+	energyTotal := (3600.0 * (110.0 + (220.0-110.0)*0.6) / 1000.0 / 3600.0) * 1.2
+	wantNow := energyTotal * 0.6
+
+	if math.Abs(out.ExpectedEmissionKg-wantNow) > 1e-9 {
+		t.Fatalf("ExpectedEmissionKg = %.12f, expected %.12f", out.ExpectedEmissionKg, wantNow)
+	}
+	if out.EmissionReductionVsNow != 0 {
+		t.Fatalf("EmissionReductionVsNow = %.6f, expected 0", out.EmissionReductionVsNow)
 	}
 }
 

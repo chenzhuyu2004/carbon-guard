@@ -5,6 +5,18 @@ import (
 	"time"
 )
 
+type FillMode string
+
+const (
+	FillModeForward FillMode = "forward"
+	FillModeStrict  FillMode = "strict"
+)
+
+type ResampleOptions struct {
+	FillMode   FillMode
+	MaxFillAge time.Duration
+}
+
 func NormalizeForecastUTC(points []ForecastPoint) []ForecastPoint {
 	out := make([]ForecastPoint, len(points))
 	for i, point := range points {
@@ -93,6 +105,15 @@ func BuildResampledIntersection(
 	zoneForecasts map[string][]ForecastPoint,
 	step time.Duration,
 ) ([]time.Time, map[string][]ForecastPoint) {
+	return BuildResampledIntersectionWithOptions(zones, zoneForecasts, step, ResampleOptions{})
+}
+
+func BuildResampledIntersectionWithOptions(
+	zones []string,
+	zoneForecasts map[string][]ForecastPoint,
+	step time.Duration,
+	options ResampleOptions,
+) ([]time.Time, map[string][]ForecastPoint) {
 	if len(zones) == 0 || step <= 0 {
 		return nil, nil
 	}
@@ -126,10 +147,10 @@ func BuildResampledIntersection(
 		return nil, nil
 	}
 
-	maxFillAge := 2 * step
+	strict, maxFillAge := normalizeResampleOptions(step, options)
 	zoneSamples := make(map[string]map[int64]float64, len(zones))
 	for _, zone := range zones {
-		zoneSamples[zone] = resampleZoneOnAxis(zoneForecasts[zone], axis, maxFillAge)
+		zoneSamples[zone] = resampleZoneOnAxis(zoneForecasts[zone], axis, maxFillAge, strict)
 	}
 
 	counts := make(map[int64]int)
@@ -169,6 +190,25 @@ func BuildResampledIntersection(
 	return common, aligned
 }
 
+func normalizeResampleOptions(step time.Duration, options ResampleOptions) (strict bool, maxFillAge time.Duration) {
+	switch options.FillMode {
+	case "", FillModeForward:
+		maxFillAge = options.MaxFillAge
+		if maxFillAge <= 0 {
+			maxFillAge = 2 * step
+		}
+		return false, maxFillAge
+	case FillModeStrict:
+		return true, 0
+	default:
+		maxFillAge = options.MaxFillAge
+		if maxFillAge <= 0 {
+			maxFillAge = 2 * step
+		}
+		return false, maxFillAge
+	}
+}
+
 func buildUTCGrid(start time.Time, end time.Time, step time.Duration) []time.Time {
 	if step <= 0 || start.After(end) {
 		return nil
@@ -182,7 +222,7 @@ func buildUTCGrid(start time.Time, end time.Time, step time.Duration) []time.Tim
 	return grid
 }
 
-func resampleZoneOnAxis(points []ForecastPoint, axis []time.Time, maxFillAge time.Duration) map[int64]float64 {
+func resampleZoneOnAxis(points []ForecastPoint, axis []time.Time, maxFillAge time.Duration, strict bool) map[int64]float64 {
 	out := make(map[int64]float64, len(axis))
 	if len(points) == 0 {
 		return out
@@ -196,6 +236,9 @@ func resampleZoneOnAxis(points []ForecastPoint, axis []time.Time, maxFillAge tim
 
 		source := points[idx].Timestamp.UTC()
 		if source.After(t.UTC()) {
+			continue
+		}
+		if strict && !source.Equal(t.UTC()) {
 			continue
 		}
 		if maxFillAge > 0 && t.UTC().Sub(source) > maxFillAge {
