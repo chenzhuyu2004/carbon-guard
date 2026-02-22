@@ -45,6 +45,7 @@ func BuildFromEmissions(durationSeconds int, asJSON bool, emissions float64, opt
 
 	if asJSON {
 		payload := map[string]any{
+			"schema_version":   pkg.JSONSchemaVersion,
 			"duration_seconds": durationSeconds,
 			"emissions_kg":     emissions,
 		}

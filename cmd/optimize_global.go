@@ -10,9 +10,11 @@ import (
 
 	appsvc "github.com/chenzhuyu2004/carbon-guard/internal/app"
 	cgerrors "github.com/chenzhuyu2004/carbon-guard/internal/errors"
+	"github.com/chenzhuyu2004/carbon-guard/pkg"
 )
 
 type OptimizeGlobalResult struct {
+	SchemaVersion             string  `json:"schema_version"`
 	DurationSeconds           int     `json:"duration_seconds"`
 	ZonesSource               string  `json:"zones_source"`
 	ZonesConfidence           string  `json:"zones_confidence"`
@@ -115,6 +117,7 @@ func optimizeGlobal(args []string) error {
 
 	if *outputMode == "json" {
 		payload := OptimizeGlobalResult{
+			SchemaVersion:             pkg.JSONSchemaVersion,
 			DurationSeconds:           *duration,
 			ZonesSource:               resolvedZones.Source,
 			ZonesConfidence:           resolvedZones.Confidence,

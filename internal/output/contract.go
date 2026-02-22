@@ -6,11 +6,13 @@ import (
 	"os"
 
 	cgerrors "github.com/chenzhuyu2004/carbon-guard/internal/errors"
+	"github.com/chenzhuyu2004/carbon-guard/pkg"
 )
 
 type ErrorResponse struct {
-	Error string `json:"error"`
-	Code  int    `json:"code"`
+	SchemaVersion string `json:"schema_version"`
+	Error         string `json:"error"`
+	Code          int    `json:"code"`
 }
 
 func HandleExit(err error, asJSON bool) {
@@ -21,8 +23,9 @@ func HandleExit(err error, asJSON bool) {
 	code := cgerrors.GetCode(err)
 	if asJSON {
 		resp := ErrorResponse{
-			Error: err.Error(),
-			Code:  code,
+			SchemaVersion: pkg.JSONSchemaVersion,
+			Error:         err.Error(),
+			Code:          code,
 		}
 		if encodeErr := json.NewEncoder(os.Stderr).Encode(resp); encodeErr != nil {
 			fmt.Fprintln(os.Stderr, err.Error())

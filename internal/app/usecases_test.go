@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -410,5 +411,42 @@ func TestRunAwareRunsWhenBelowThresholdEnter(t *testing.T) {
 	}
 	if out.Message == "" {
 		t.Fatalf("expected non-empty run-aware message")
+	}
+}
+
+func TestRunAwareNoRegretGuardRunsNow(t *testing.T) {
+	now := time.Now().UTC().Add(2 * time.Hour)
+	a := New(&fakeProvider{
+		currentByZone: map[string]float64{"DE": 0.9},
+		forecastByZone: map[string][]scheduling.ForecastPoint{
+			"DE": {
+				{Timestamp: now, CI: 0.5000},
+				{Timestamp: now.Add(time.Hour), CI: 0.4950},
+				{Timestamp: now.Add(2 * time.Hour), CI: 0.4950},
+			},
+		},
+	})
+
+	out, err := a.RunAware(context.Background(), RunAwareInput{
+		Zone:                    "DE",
+		Duration:                3600,
+		ThresholdEnter:          0.10,
+		ThresholdExit:           0.20,
+		Lookahead:               6,
+		NoRegretMaxDelay:        30 * time.Minute,
+		NoRegretMinReductionPct: 5.0,
+		Model: ModelContext{
+			Runner: "ubuntu",
+			Load:   0.6,
+			PUE:    1.2,
+		},
+		MaxWait:   2 * time.Hour,
+		PollEvery: 5 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("RunAware() unexpected error: %v", err)
+	}
+	if out.Message == "" || !strings.Contains(out.Message, "No-regret guard triggered") {
+		t.Fatalf("expected no-regret guard message, got %q", out.Message)
 	}
 }

@@ -10,6 +10,7 @@ import (
 
 	appsvc "github.com/chenzhuyu2004/carbon-guard/internal/app"
 	cgerrors "github.com/chenzhuyu2004/carbon-guard/internal/errors"
+	"github.com/chenzhuyu2004/carbon-guard/pkg"
 )
 
 type OptimizeZoneOutput struct {
@@ -20,6 +21,7 @@ type OptimizeZoneOutput struct {
 }
 
 type OptimizeResult struct {
+	SchemaVersion       string               `json:"schema_version"`
 	DurationSeconds     int                  `json:"duration_seconds"`
 	Zones               []OptimizeZoneOutput `json:"zones"`
 	ZonesSource         string               `json:"zones_source"`
@@ -123,6 +125,7 @@ func optimize(args []string) error {
 		}
 
 		payload := OptimizeResult{
+			SchemaVersion:       pkg.JSONSchemaVersion,
 			DurationSeconds:     *duration,
 			Zones:               zoneOutputs,
 			ZonesSource:         resolvedZones.Source,

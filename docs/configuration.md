@@ -107,6 +107,8 @@ Commands using forecast data support:
 
 - `--threshold-enter`
 - `--threshold-exit`
+- `--max-delay-for-gain`
+- `--min-reduction-for-wait`
 
 If both are unset, `--threshold` (legacy flag) is used for backward compatibility.
 

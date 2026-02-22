@@ -21,6 +21,9 @@ func TestBuildFromEmissionsJSONIncludesBudgetAndBaseline(t *testing.T) {
 	if payload["duration_seconds"].(float64) != 300 {
 		t.Fatalf("duration_seconds mismatch: %#v", payload["duration_seconds"])
 	}
+	if payload["schema_version"] != "v1" {
+		t.Fatalf("schema_version mismatch: %#v", payload["schema_version"])
+	}
 	if _, ok := payload["budget_kg"]; !ok {
 		t.Fatalf("expected budget_kg in payload")
 	}

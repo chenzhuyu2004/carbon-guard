@@ -3,8 +3,10 @@ package ci
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"sort"
@@ -49,16 +51,18 @@ func (e *HTTPStatusError) Error() string {
 // Upstream unit is gCO2/kWh, converted to kgCO2/kWh before returning.
 // 上游单位为 gCO2/kWh，返回前会转换为 kgCO2/kWh。
 func (p *ElectricityMapsProvider) GetCurrentCI(ctx context.Context, zone string) (float64, error) {
+	const op = "get_current_ci"
+
 	if p.APIKey == "" {
-		return 0, fmt.Errorf("missing ELECTRICITY_MAPS_API_KEY: set an Electricity Maps API key to use live carbon data")
+		return 0, NewProviderError(ErrorKindAuth, op, zone, fmt.Errorf("missing ELECTRICITY_MAPS_API_KEY: set an Electricity Maps API key to use live carbon data"))
 	}
 	if zone == "" {
-		return 0, fmt.Errorf("missing electricity maps zone")
+		return 0, NewProviderError(ErrorKindInvalidData, op, zone, fmt.Errorf("missing electricity maps zone"))
 	}
 
 	endpoint, err := url.Parse(electricityMapsLatestURL)
 	if err != nil {
-		return 0, fmt.Errorf("build electricity maps url: %w", err)
+		return 0, NewProviderError(ErrorKindInvalidData, op, zone, fmt.Errorf("build electricity maps url: %w", err))
 	}
 
 	query := endpoint.Query()
@@ -67,32 +71,33 @@ func (p *ElectricityMapsProvider) GetCurrentCI(ctx context.Context, zone string)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
 	if err != nil {
-		return 0, fmt.Errorf("create electricity maps request: %w", err)
+		return 0, NewProviderError(ErrorKindInvalidData, op, zone, fmt.Errorf("create electricity maps request: %w", err))
 	}
 	req.Header.Set("auth-token", p.APIKey)
 
 	resp, err := electricityMapsHTTPClient.Do(req)
 	if err != nil {
-		return 0, fmt.Errorf("call electricity maps api: %w", err)
+		return 0, classifyNetworkError(op, zone, "call electricity maps api", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, &HTTPStatusError{
+		statusErr := &HTTPStatusError{
 			StatusCode: resp.StatusCode,
 			Status:     resp.Status,
 			Body:       readErrorBody(resp.Body),
 		}
+		return 0, NewProviderStatusError(classifyStatusKind(resp.StatusCode), op, zone, resp.StatusCode, statusErr)
 	}
 
 	var body struct {
 		CarbonIntensity float64 `json:"carbonIntensity"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		return 0, fmt.Errorf("decode electricity maps response: %w", err)
+		return 0, NewProviderError(ErrorKindInvalidData, op, zone, fmt.Errorf("decode electricity maps response: %w", err))
 	}
 	if body.CarbonIntensity <= 0 {
-		return 0, fmt.Errorf("invalid carbonIntensity value: %v", body.CarbonIntensity)
+		return 0, NewProviderError(ErrorKindInvalidData, op, zone, fmt.Errorf("invalid carbonIntensity value: %v", body.CarbonIntensity))
 	}
 
 	return body.CarbonIntensity / 1000.0, nil
@@ -106,19 +111,21 @@ func (p *ElectricityMapsProvider) GetCurrentCI(ctx context.Context, zone string)
 // provider 仅负责解析、单位转换和排序，并保留全部有效点；
 // lookahead 裁剪由 app 层负责，以保证编排语义一致。
 func (p *ElectricityMapsProvider) GetForecastCI(ctx context.Context, zone string, hours int) ([]ForecastPoint, error) {
+	const op = "get_forecast_ci"
+
 	if p.APIKey == "" {
-		return nil, fmt.Errorf("missing ELECTRICITY_MAPS_API_KEY: set an Electricity Maps API key to use forecast carbon data")
+		return nil, NewProviderError(ErrorKindAuth, op, zone, fmt.Errorf("missing ELECTRICITY_MAPS_API_KEY: set an Electricity Maps API key to use forecast carbon data"))
 	}
 	if zone == "" {
-		return nil, fmt.Errorf("missing electricity maps zone")
+		return nil, NewProviderError(ErrorKindInvalidData, op, zone, fmt.Errorf("missing electricity maps zone"))
 	}
 	if hours <= 0 {
-		return nil, fmt.Errorf("hours must be > 0")
+		return nil, NewProviderError(ErrorKindInvalidData, op, zone, fmt.Errorf("hours must be > 0"))
 	}
 
 	endpoint, err := url.Parse(electricityMapsForecastURL)
 	if err != nil {
-		return nil, fmt.Errorf("build electricity maps forecast url: %w", err)
+		return nil, NewProviderError(ErrorKindInvalidData, op, zone, fmt.Errorf("build electricity maps forecast url: %w", err))
 	}
 
 	query := endpoint.Query()
@@ -127,22 +134,23 @@ func (p *ElectricityMapsProvider) GetForecastCI(ctx context.Context, zone string
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
 	if err != nil {
-		return nil, fmt.Errorf("create electricity maps forecast request: %w", err)
+		return nil, NewProviderError(ErrorKindInvalidData, op, zone, fmt.Errorf("create electricity maps forecast request: %w", err))
 	}
 	req.Header.Set("auth-token", p.APIKey)
 
 	resp, err := electricityMapsHTTPClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("call electricity maps forecast api: %w", err)
+		return nil, classifyNetworkError(op, zone, "call electricity maps forecast api", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, &HTTPStatusError{
+		statusErr := &HTTPStatusError{
 			StatusCode: resp.StatusCode,
 			Status:     resp.Status,
 			Body:       readErrorBody(resp.Body),
 		}
+		return nil, NewProviderStatusError(classifyStatusKind(resp.StatusCode), op, zone, resp.StatusCode, statusErr)
 	}
 
 	var body struct {
@@ -152,19 +160,19 @@ func (p *ElectricityMapsProvider) GetForecastCI(ctx context.Context, zone string
 		} `json:"forecast"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		return nil, fmt.Errorf("decode electricity maps forecast response: %w", err)
+		return nil, NewProviderError(ErrorKindInvalidData, op, zone, fmt.Errorf("decode electricity maps forecast response: %w", err))
 	}
 
 	points := make([]ForecastPoint, 0, len(body.Forecast))
 
 	for _, item := range body.Forecast {
 		if item.CarbonIntensity <= 0 {
-			return nil, fmt.Errorf("invalid forecast carbonIntensity value: %v", item.CarbonIntensity)
+			return nil, NewProviderError(ErrorKindInvalidData, op, zone, fmt.Errorf("invalid forecast carbonIntensity value: %v", item.CarbonIntensity))
 		}
 
 		timestamp, err := parseForecastTime(item.Datetime)
 		if err != nil {
-			return nil, err
+			return nil, NewProviderError(ErrorKindInvalidData, op, zone, err)
 		}
 		timestamp = timestamp.UTC()
 
@@ -179,6 +187,35 @@ func (p *ElectricityMapsProvider) GetForecastCI(ctx context.Context, zone string
 	})
 
 	return points, nil
+}
+
+func classifyNetworkError(operation string, zone string, prefix string, err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return fmt.Errorf("%s: %w", prefix, err)
+	}
+
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return NewProviderError(ErrorKindNetwork, operation, zone, fmt.Errorf("%s: %w", prefix, err))
+	}
+	return NewProviderError(ErrorKindUpstream, operation, zone, fmt.Errorf("%s: %w", prefix, err))
+}
+
+func classifyStatusKind(statusCode int) ErrorKind {
+	switch statusCode {
+	case http.StatusUnauthorized, http.StatusForbidden:
+		return ErrorKindAuth
+	case http.StatusTooManyRequests:
+		return ErrorKindRateLimit
+	default:
+		if statusCode >= http.StatusInternalServerError {
+			return ErrorKindUpstream
+		}
+		return ErrorKindInvalidData
+	}
 }
 
 // readErrorBody reads up to 4KB response body for safe error reporting.
