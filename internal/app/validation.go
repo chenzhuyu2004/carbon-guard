@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -67,6 +68,17 @@ func validateMaxWait(maxWait time.Duration) error {
 func validateWaitCost(waitCost float64) error {
 	if waitCost < 0 {
 		return fmt.Errorf("%w: wait-cost must be >= 0", ErrInput)
+	}
+	return nil
+}
+
+func validateResampleConfig(fillMode string, maxFillAge time.Duration) error {
+	mode := strings.TrimSpace(strings.ToLower(fillMode))
+	if mode != "" && mode != "forward" && mode != "strict" {
+		return fmt.Errorf("%w: resample-fill must be one of forward|strict", ErrInput)
+	}
+	if maxFillAge < 0 {
+		return fmt.Errorf("%w: resample-max-fill-age must be >= 0", ErrInput)
 	}
 	return nil
 }

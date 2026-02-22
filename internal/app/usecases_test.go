@@ -264,6 +264,59 @@ func TestOptimizeGlobalDurationValidationReturnsErrInput(t *testing.T) {
 	}
 }
 
+func TestOptimizeGlobalStrictResampleNoIntersectionReturnsErrNoValidWindow(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second).Add(10 * time.Minute)
+	a := New(&fakeProvider{
+		forecastByZone: map[string][]scheduling.ForecastPoint{
+			"DE": {
+				{Timestamp: now, CI: 0.4},
+				{Timestamp: now.Add(time.Hour), CI: 0.5},
+				{Timestamp: now.Add(2 * time.Hour), CI: 0.6},
+			},
+			"FR": {
+				{Timestamp: now.Add(5 * time.Minute), CI: 0.3},
+				{Timestamp: now.Add(65 * time.Minute), CI: 0.4},
+				{Timestamp: now.Add(125 * time.Minute), CI: 0.5},
+			},
+		},
+	})
+
+	_, err := a.OptimizeGlobal(context.Background(), OptimizeGlobalInput{
+		Zones:            []string{"DE", "FR"},
+		Duration:         1800,
+		Lookahead:        3,
+		ResampleFillMode: "strict",
+		Model: ModelContext{
+			Runner: "ubuntu",
+			Load:   0.6,
+			PUE:    1.2,
+		},
+		Timeout: time.Second,
+	})
+	if !errors.Is(err, ErrNoValidWindow) {
+		t.Fatalf("expected ErrNoValidWindow, got %v", err)
+	}
+}
+
+func TestOptimizeGlobalInvalidResampleModeReturnsErrInput(t *testing.T) {
+	a := New(&fakeProvider{})
+	_, err := a.OptimizeGlobal(context.Background(), OptimizeGlobalInput{
+		Zones:            []string{"DE", "FR"},
+		Duration:         1800,
+		Lookahead:        3,
+		ResampleFillMode: "invalid",
+		Model: ModelContext{
+			Runner: "ubuntu",
+			Load:   0.6,
+			PUE:    1.2,
+		},
+		Timeout: time.Second,
+	})
+	if !errors.Is(err, ErrInput) {
+		t.Fatalf("expected ErrInput, got %v", err)
+	}
+}
+
 func TestRunAwareMaxWaitExceededReturnsErrMaxWaitExceeded(t *testing.T) {
 	now := time.Now().UTC().Add(2 * time.Hour)
 	a := New(&fakeProvider{
