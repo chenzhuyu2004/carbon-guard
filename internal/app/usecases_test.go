@@ -56,7 +56,7 @@ func TestAnalyzeBestWindowNoForecastReturnsErrNoValidWindow(t *testing.T) {
 		forecastByZone: map[string][]scheduling.ForecastPoint{"DE": {}},
 	})
 
-	_, err := a.AnalyzeBestWindow(context.Background(), "DE", 300, 1, ModelContext{
+	_, err := a.AnalyzeBestWindow(context.Background(), "DE", 300, 1, time.Now().UTC(), ModelContext{
 		Runner: "ubuntu",
 		Load:   0.6,
 		PUE:    1.2,
@@ -84,7 +84,7 @@ func TestAnalyzeBestWindowWaitCostChangesBestWindow(t *testing.T) {
 		PUE:    1.2,
 	}
 
-	withoutWaitCost, err := a.AnalyzeBestWindow(context.Background(), "DE", 3600, 4, model, 0)
+	withoutWaitCost, err := a.AnalyzeBestWindow(context.Background(), "DE", 3600, 4, now, model, 0)
 	if err != nil {
 		t.Fatalf("AnalyzeBestWindow() unexpected error without wait-cost: %v", err)
 	}
@@ -92,12 +92,37 @@ func TestAnalyzeBestWindowWaitCostChangesBestWindow(t *testing.T) {
 		t.Fatalf("best start without wait-cost = %s, expected %s", withoutWaitCost.BestStart, now.Add(time.Hour))
 	}
 
-	withWaitCost, err := a.AnalyzeBestWindow(context.Background(), "DE", 3600, 4, model, 0.2)
+	withWaitCost, err := a.AnalyzeBestWindow(context.Background(), "DE", 3600, 4, now, model, 0.2)
 	if err != nil {
 		t.Fatalf("AnalyzeBestWindow() unexpected error with wait-cost: %v", err)
 	}
 	if !withWaitCost.BestStart.Equal(now) {
 		t.Fatalf("best start with wait-cost = %s, expected %s", withWaitCost.BestStart, now)
+	}
+}
+
+func TestAnalyzeBestWindowClipsForecastByEvalStart(t *testing.T) {
+	evalStart := time.Now().UTC().Truncate(time.Second).Add(2 * time.Minute)
+	a := New(&fakeProvider{
+		forecastByZone: map[string][]scheduling.ForecastPoint{
+			"DE": {
+				{Timestamp: evalStart.Add(-30 * time.Minute), CI: 0.1},
+				{Timestamp: evalStart.Add(30 * time.Minute), CI: 0.8},
+				{Timestamp: evalStart.Add(90 * time.Minute), CI: 0.8},
+			},
+		},
+	})
+
+	analysis, err := a.AnalyzeBestWindow(context.Background(), "DE", 3600, 2, evalStart, ModelContext{
+		Runner: "ubuntu",
+		Load:   0.6,
+		PUE:    1.2,
+	}, 0)
+	if err != nil {
+		t.Fatalf("AnalyzeBestWindow() unexpected error: %v", err)
+	}
+	if analysis.CurrentStart.Before(evalStart) {
+		t.Fatalf("current window start should be clipped to eval start, got %s, evalStart %s", analysis.CurrentStart, evalStart)
 	}
 }
 

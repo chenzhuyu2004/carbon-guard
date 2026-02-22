@@ -86,7 +86,7 @@ func TestSplitZonesNormalizesAndDropsEmpty(t *testing.T) {
 func TestAnalyzeBestWindowDurationExceedsLookahead(t *testing.T) {
 	provider := &fakeCIProvider{}
 	service := appsvc.New(newProviderAdapter(provider))
-	_, err := service.AnalyzeBestWindow(context.Background(), "DE", 7201, 2, appsvc.ModelContext{
+	_, err := service.AnalyzeBestWindow(context.Background(), "DE", 7201, 2, time.Now().UTC(), appsvc.ModelContext{
 		Runner: "ubuntu",
 		Load:   0.6,
 		PUE:    1.2,
@@ -106,7 +106,7 @@ func TestAnalyzeBestWindowCoverageError(t *testing.T) {
 	}
 
 	service := appsvc.New(newProviderAdapter(provider))
-	_, err := service.AnalyzeBestWindow(context.Background(), "DE", 7200, 3, appsvc.ModelContext{
+	_, err := service.AnalyzeBestWindow(context.Background(), "DE", 7200, 3, time.Now().UTC(), appsvc.ModelContext{
 		Runner: "ubuntu",
 		Load:   0.6,
 		PUE:    1.2,

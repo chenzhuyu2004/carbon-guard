@@ -74,7 +74,7 @@ func TestGetCurrentCINon200IncludesBody(t *testing.T) {
 	}
 }
 
-func TestGetForecastCIConvertsAndFilters(t *testing.T) {
+func TestGetForecastCIConvertsAndSorts(t *testing.T) {
 	now := time.Now().UTC()
 	insideWindow := now.Add(30 * time.Minute).Format(time.RFC3339)
 	outsideWindow := now.Add(2 * time.Hour).Format(time.RFC3339)
@@ -106,11 +106,20 @@ func TestGetForecastCIConvertsAndFilters(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetForecastCI() unexpected error: %v", err)
 	}
-	if len(points) != 1 {
-		t.Fatalf("GetForecastCI() returned %d points, expected 1", len(points))
+	if len(points) != 3 {
+		t.Fatalf("GetForecastCI() returned %d points, expected 3", len(points))
 	}
-	if math.Abs(points[0].CI-0.5) > 1e-9 {
-		t.Fatalf("GetForecastCI().CI = %v, expected %v", points[0].CI, 0.5)
+	if !points[0].Timestamp.Before(points[1].Timestamp) || !points[1].Timestamp.Before(points[2].Timestamp) {
+		t.Fatalf("GetForecastCI() points are not sorted by timestamp")
+	}
+	if math.Abs(points[0].CI-0.6) > 1e-9 {
+		t.Fatalf("GetForecastCI().CI[0] = %v, expected %v", points[0].CI, 0.6)
+	}
+	if math.Abs(points[1].CI-0.5) > 1e-9 {
+		t.Fatalf("GetForecastCI().CI[1] = %v, expected %v", points[1].CI, 0.5)
+	}
+	if math.Abs(points[2].CI-0.3) > 1e-9 {
+		t.Fatalf("GetForecastCI().CI[2] = %v, expected %v", points[2].CI, 0.3)
 	}
 }
 
