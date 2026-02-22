@@ -56,7 +56,11 @@ func TestAnalyzeBestWindowNoForecastReturnsErrNoValidWindow(t *testing.T) {
 		forecastByZone: map[string][]scheduling.ForecastPoint{"DE": {}},
 	})
 
-	_, err := a.AnalyzeBestWindow(context.Background(), "DE", 300, 1, "ubuntu", 0.6, 1.2)
+	_, err := a.AnalyzeBestWindow(context.Background(), "DE", 300, 1, ModelContext{
+		Runner: "ubuntu",
+		Load:   0.6,
+		PUE:    1.2,
+	})
 	if !errors.Is(err, ErrNoValidWindow) {
 		t.Fatalf("expected ErrNoValidWindow, got %v", err)
 	}
@@ -66,11 +70,13 @@ func TestRunLiveProviderMissingReturnsErrProvider(t *testing.T) {
 	a := New(nil)
 	_, err := a.Run(context.Background(), RunInput{
 		Duration: 300,
-		Runner:   "ubuntu",
 		Region:   "global",
-		Load:     0.6,
-		PUE:      1.2,
 		LiveZone: "DE",
+		Model: ModelContext{
+			Runner: "ubuntu",
+			Load:   0.6,
+			PUE:    1.2,
+		},
 	})
 	if !errors.Is(err, ErrProvider) {
 		t.Fatalf("expected ErrProvider, got %v", err)
@@ -84,10 +90,12 @@ func TestOptimizeAllFailuresReturnsErrProvider(t *testing.T) {
 		Zones:     []string{"DE", "FR"},
 		Duration:  300,
 		Lookahead: 1,
-		Runner:    "ubuntu",
-		Load:      0.6,
-		PUE:       1.2,
-		Timeout:   time.Second,
+		Model: ModelContext{
+			Runner: "ubuntu",
+			Load:   0.6,
+			PUE:    1.2,
+		},
+		Timeout: time.Second,
 	})
 	if !errors.Is(err, ErrProvider) {
 		t.Fatalf("expected ErrProvider, got %v", err)
@@ -100,10 +108,12 @@ func TestOptimizeGlobalDurationValidationReturnsErrInput(t *testing.T) {
 		Zones:     []string{"DE"},
 		Duration:  7201,
 		Lookahead: 2,
-		Runner:    "ubuntu",
-		Load:      0.6,
-		PUE:       1.2,
-		Timeout:   time.Second,
+		Model: ModelContext{
+			Runner: "ubuntu",
+			Load:   0.6,
+			PUE:    1.2,
+		},
+		Timeout: time.Second,
 	})
 	if !errors.Is(err, ErrInput) {
 		t.Fatalf("expected ErrInput, got %v", err)
@@ -127,9 +137,11 @@ func TestRunAwareMaxWaitExceededReturnsErrMaxWaitExceeded(t *testing.T) {
 		Duration:  300,
 		Threshold: 0.1,
 		Lookahead: 3,
-		Runner:    "ubuntu",
-		Load:      0.6,
-		PUE:       1.2,
+		Model: ModelContext{
+			Runner: "ubuntu",
+			Load:   0.6,
+			PUE:    1.2,
+		},
 		MaxWait:   20 * time.Millisecond,
 		PollEvery: 5 * time.Millisecond,
 	})

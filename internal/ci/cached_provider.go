@@ -3,10 +3,12 @@ package ci
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -14,12 +16,26 @@ type CachedProvider struct {
 	Inner    Provider
 	CacheDir string
 	TTL      time.Duration
+
+	mu       sync.Mutex
+	inflight map[string]*forecastCall
 }
 
 type ForecastCacheFile struct {
 	FetchedAt string          `json:"fetched_at"`
 	Forecast  []ForecastPoint `json:"forecast"`
 }
+
+type forecastCall struct {
+	done   chan struct{}
+	points []ForecastPoint
+	err    error
+}
+
+const (
+	cacheLockPollInterval = 100 * time.Millisecond
+	cacheLockStaleAfter   = 2 * time.Minute
+)
 
 func (c *CachedProvider) GetCurrentCI(ctx context.Context, zone string) (float64, error) {
 	if c.Inner == nil {
@@ -46,7 +62,32 @@ func (c *CachedProvider) GetForecastCI(ctx context.Context, zone string, hours i
 		}
 	}
 
-	points, err := c.Inner.GetForecastCI(ctx, zone, hours)
+	callKey := fmt.Sprintf("%s:%d", sanitizeCacheToken(zone), hours)
+	call, leader := c.acquireInflight(callKey)
+	if !leader {
+		return c.awaitInflight(ctx, call)
+	}
+
+	var points []ForecastPoint
+	var err error
+	defer c.finishInflight(callKey, call, points, err)
+
+	var unlock func()
+	if c.TTL > 0 {
+		unlock, err = c.acquireFileLock(ctx, cachePath+".lock")
+		if err != nil {
+			return nil, err
+		}
+		if unlock != nil {
+			defer unlock()
+			if cached, ok := c.readForecastCache(ctx, cachePath); ok {
+				points = cached
+				return points, nil
+			}
+		}
+	}
+
+	points, err = c.Inner.GetForecastCI(ctx, zone, hours)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +95,9 @@ func (c *CachedProvider) GetForecastCI(ctx context.Context, zone string, hours i
 		return nil, err
 	}
 
-	c.writeForecastCache(ctx, cachePath, points)
+	if c.TTL > 0 {
+		c.writeForecastCache(ctx, cachePath, points)
+	}
 	return points, nil
 }
 
@@ -135,6 +178,82 @@ func (c *CachedProvider) writeForecastCache(ctx context.Context, path string, po
 	}
 
 	_ = os.Rename(tmpPath, path)
+}
+
+func (c *CachedProvider) acquireInflight(key string) (*forecastCall, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.inflight == nil {
+		c.inflight = make(map[string]*forecastCall)
+	}
+	if existing, ok := c.inflight[key]; ok {
+		return existing, false
+	}
+
+	call := &forecastCall{done: make(chan struct{})}
+	c.inflight[key] = call
+	return call, true
+}
+
+func (c *CachedProvider) awaitInflight(ctx context.Context, call *forecastCall) ([]ForecastPoint, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-call.done:
+		if call.err != nil {
+			return nil, call.err
+		}
+		return call.points, nil
+	}
+}
+
+func (c *CachedProvider) finishInflight(key string, call *forecastCall, points []ForecastPoint, err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	call.points = points
+	call.err = err
+	close(call.done)
+	delete(c.inflight, key)
+}
+
+func (c *CachedProvider) acquireFileLock(ctx context.Context, lockPath string) (func(), error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
+		return nil, nil
+	}
+
+	for {
+		lockFile, err := os.OpenFile(lockPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if err == nil {
+			_, _ = lockFile.WriteString(time.Now().UTC().Format(time.RFC3339Nano))
+			_ = lockFile.Close()
+			return func() {
+				_ = os.Remove(lockPath)
+			}, nil
+		}
+
+		if !errors.Is(err, os.ErrExist) {
+			return nil, nil
+		}
+
+		info, statErr := os.Stat(lockPath)
+		if statErr == nil && time.Since(info.ModTime()) > cacheLockStaleAfter {
+			_ = os.Remove(lockPath)
+			continue
+		}
+
+		timer := time.NewTimer(cacheLockPollInterval)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
 }
 
 func sanitizeCacheToken(value string) string {

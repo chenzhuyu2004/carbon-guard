@@ -26,6 +26,19 @@ type ElectricityMapsProvider struct {
 	APIKey string
 }
 
+type HTTPStatusError struct {
+	StatusCode int
+	Status     string
+	Body       string
+}
+
+func (e *HTTPStatusError) Error() string {
+	if e == nil {
+		return "http status error"
+	}
+	return fmt.Sprintf("electricity maps api status: %s (%s)", e.Status, e.Body)
+}
+
 func (p *ElectricityMapsProvider) GetCurrentCI(ctx context.Context, zone string) (float64, error) {
 	if p.APIKey == "" {
 		return 0, fmt.Errorf("missing ELECTRICITY_MAPS_API_KEY: set an Electricity Maps API key to use live carbon data")
@@ -56,7 +69,11 @@ func (p *ElectricityMapsProvider) GetCurrentCI(ctx context.Context, zone string)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("electricity maps api status: %s (%s)", resp.Status, readErrorBody(resp.Body))
+		return 0, &HTTPStatusError{
+			StatusCode: resp.StatusCode,
+			Status:     resp.Status,
+			Body:       readErrorBody(resp.Body),
+		}
 	}
 
 	var body struct {
@@ -105,7 +122,11 @@ func (p *ElectricityMapsProvider) GetForecastCI(ctx context.Context, zone string
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("electricity maps forecast api status: %s (%s)", resp.Status, readErrorBody(resp.Body))
+		return nil, &HTTPStatusError{
+			StatusCode: resp.StatusCode,
+			Status:     resp.Status,
+			Body:       readErrorBody(resp.Body),
+		}
 	}
 
 	var body struct {

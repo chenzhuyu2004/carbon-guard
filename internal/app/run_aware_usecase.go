@@ -24,17 +24,15 @@ func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, e
 	if in.Lookahead <= 0 {
 		return RunAwareOutput{}, fmt.Errorf("%w: lookahead must be > 0", ErrInput)
 	}
-	if in.Load < 0 || in.Load > 1 {
-		return RunAwareOutput{}, fmt.Errorf("%w: load must be between 0 and 1", ErrInput)
-	}
-	if in.PUE < 1.0 {
-		return RunAwareOutput{}, fmt.Errorf("%w: pue must be >= 1.0", ErrInput)
-	}
 	if in.MaxWait <= 0 {
 		return RunAwareOutput{}, fmt.Errorf("%w: max-wait must be > 0", ErrInput)
 	}
+	model, err := normalizeModel(in.Model)
+	if err != nil {
+		return RunAwareOutput{}, err
+	}
 
-	analysis, err := a.AnalyzeBestWindow(ctx, in.Zone, in.Duration, in.Lookahead, in.Runner, in.Load, in.PUE)
+	analysis, err := a.AnalyzeBestWindow(ctx, in.Zone, in.Duration, in.Lookahead, model)
 	if err != nil {
 		return RunAwareOutput{}, err
 	}

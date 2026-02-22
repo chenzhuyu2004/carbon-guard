@@ -9,7 +9,6 @@ import (
 	"time"
 
 	appsvc "github.com/chenzhuyu2004/carbon-guard/internal/app"
-	"github.com/chenzhuyu2004/carbon-guard/internal/ci"
 	cgerrors "github.com/chenzhuyu2004/carbon-guard/internal/errors"
 )
 
@@ -79,20 +78,12 @@ func optimize(args []string) error {
 		return cgerrors.Newf(cgerrors.InputError, "missing ELECTRICITY_MAPS_API_KEY")
 	}
 
-	base := &ci.ElectricityMapsProvider{APIKey: apiKey}
-	provider := &ci.CachedProvider{
-		Inner:    base,
-		CacheDir: cacheDir,
-		TTL:      cacheTTL,
-	}
-	service := appsvc.New(newProviderAdapter(provider))
+	service := appsvc.New(newProviderAdapter(buildLiveProvider(apiKey, cacheDir, cacheTTL)))
 	out, err := service.Optimize(context.Background(), appsvc.OptimizeInput{
 		Zones:     zoneList,
 		Duration:  *duration,
 		Lookahead: *lookahead,
-		Runner:    defaultSchedulingRunner,
-		Load:      defaultSchedulingLoad,
-		PUE:       defaultSchedulingPUE,
+		Model:     defaultModelContext(),
 		Timeout:   timeout,
 	})
 	if err != nil {

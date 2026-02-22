@@ -13,9 +13,7 @@ func (a *App) AnalyzeBestWindow(
 	zone string,
 	duration int,
 	lookahead int,
-	runner string,
-	load float64,
-	pue float64,
+	model ModelContext,
 ) (SuggestionAnalysis, error) {
 	if a == nil || a.provider == nil {
 		return SuggestionAnalysis{}, fmt.Errorf("%w: provider is not configured", ErrProvider)
@@ -29,11 +27,10 @@ func (a *App) AnalyzeBestWindow(
 	if lookahead <= 0 {
 		return SuggestionAnalysis{}, fmt.Errorf("%w: lookahead must be > 0", ErrInput)
 	}
-	if load < 0 || load > 1 {
-		return SuggestionAnalysis{}, fmt.Errorf("%w: load must be between 0 and 1", ErrInput)
-	}
-	if pue < 1.0 {
-		return SuggestionAnalysis{}, fmt.Errorf("%w: pue must be >= 1.0", ErrInput)
+	var err error
+	model, err = normalizeModel(model)
+	if err != nil {
+		return SuggestionAnalysis{}, err
 	}
 	if duration > lookahead*3600 {
 		return SuggestionAnalysis{}, fmt.Errorf("%w: duration %ds exceeds lookahead window %ds", ErrInput, duration, lookahead*3600)
@@ -53,7 +50,7 @@ func (a *App) AnalyzeBestWindow(
 		return SuggestionAnalysis{}, fmt.Errorf("%w: forecast does not cover full duration: need %ds but only %ds available", ErrNoValidWindow, duration, maxCoverage)
 	}
 
-	currentEmission, ok := scheduling.EstimateWindowEmissions(forecast, duration, runner, load, pue)
+	currentEmission, ok := scheduling.EstimateWindowEmissions(forecast, duration, model.Runner, model.Load, model.PUE)
 	if !ok {
 		return SuggestionAnalysis{}, fmt.Errorf("%w: forecast does not cover full duration: need %ds within lookahead %dh", ErrNoValidWindow, duration, lookahead)
 	}
@@ -64,7 +61,7 @@ func (a *App) AnalyzeBestWindow(
 	bestStart := currentStart
 
 	for i := 1; i < len(forecast); i++ {
-		emission, ok := scheduling.EstimateWindowEmissions(forecast[i:], duration, runner, load, pue)
+		emission, ok := scheduling.EstimateWindowEmissions(forecast[i:], duration, model.Runner, model.Load, model.PUE)
 		if !ok {
 			break
 		}
@@ -105,14 +102,12 @@ func (a *App) Suggest(ctx context.Context, in SuggestInput) (SuggestOutput, erro
 	if in.Lookahead <= 0 {
 		return SuggestOutput{}, fmt.Errorf("%w: lookahead must be > 0", ErrInput)
 	}
-	if in.Load < 0 || in.Load > 1 {
-		return SuggestOutput{}, fmt.Errorf("%w: load must be between 0 and 1", ErrInput)
-	}
-	if in.PUE < 1.0 {
-		return SuggestOutput{}, fmt.Errorf("%w: pue must be >= 1.0", ErrInput)
+	model, err := normalizeModel(in.Model)
+	if err != nil {
+		return SuggestOutput{}, err
 	}
 
-	analysis, err := a.AnalyzeBestWindow(ctx, in.Zone, in.Duration, in.Lookahead, in.Runner, in.Load, in.PUE)
+	analysis, err := a.AnalyzeBestWindow(ctx, in.Zone, in.Duration, in.Lookahead, model)
 	if err != nil {
 		return SuggestOutput{}, err
 	}

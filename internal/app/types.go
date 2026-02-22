@@ -2,14 +2,18 @@ package app
 
 import "time"
 
+type ModelContext struct {
+	Runner string
+	Load   float64
+	PUE    float64
+}
+
 type RunInput struct {
 	Duration    int
-	Runner      string
 	Region      string
-	Load        float64
-	PUE         float64
 	SegmentsRaw string
 	LiveZone    string
+	Model       ModelContext
 }
 
 type RunResult struct {
@@ -25,9 +29,7 @@ type SuggestInput struct {
 	Duration  int
 	Threshold float64
 	Lookahead int
-	Runner    string
-	Load      float64
-	PUE       float64
+	Model     ModelContext
 }
 
 type SuggestOutput struct {
@@ -53,9 +55,7 @@ type RunAwareInput struct {
 	Duration   int
 	Threshold  float64
 	Lookahead  int
-	Runner     string
-	Load       float64
-	PUE        float64
+	Model      ModelContext
 	MaxWait    time.Duration
 	PollEvery  time.Duration
 	StatusFunc func(string)
@@ -76,9 +76,7 @@ type OptimizeInput struct {
 	Zones     []string
 	Duration  int
 	Lookahead int
-	Runner    string
-	Load      float64
-	PUE       float64
+	Model     ModelContext
 	Timeout   time.Duration
 }
 
@@ -94,9 +92,7 @@ type OptimizeGlobalInput struct {
 	Zones     []string
 	Duration  int
 	Lookahead int
-	Runner    string
-	Load      float64
-	PUE       float64
+	Model     ModelContext
 	Timeout   time.Duration
 }
 

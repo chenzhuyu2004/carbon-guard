@@ -21,17 +21,15 @@ func (a *App) Optimize(ctx context.Context, in OptimizeInput) (OptimizeOutput, e
 	if in.Lookahead <= 0 {
 		return OptimizeOutput{}, fmt.Errorf("%w: lookahead must be > 0", ErrInput)
 	}
-	if in.Load < 0 || in.Load > 1 {
-		return OptimizeOutput{}, fmt.Errorf("%w: load must be between 0 and 1", ErrInput)
-	}
-	if in.PUE < 1.0 {
-		return OptimizeOutput{}, fmt.Errorf("%w: pue must be >= 1.0", ErrInput)
-	}
 	if in.Duration > in.Lookahead*3600 {
 		return OptimizeOutput{}, fmt.Errorf("%w: duration %ds exceeds forecast coverage %ds", ErrInput, in.Duration, in.Lookahead*3600)
 	}
 	if in.Timeout <= 0 {
 		return OptimizeOutput{}, fmt.Errorf("%w: timeout must be > 0", ErrInput)
+	}
+	model, err := normalizeModel(in.Model)
+	if err != nil {
+		return OptimizeOutput{}, err
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, in.Timeout)
@@ -52,7 +50,7 @@ func (a *App) Optimize(ctx context.Context, in OptimizeInput) (OptimizeOutput, e
 		go func() {
 			defer wg.Done()
 
-			analysis, err := a.AnalyzeBestWindow(ctx, zone, in.Duration, in.Lookahead, in.Runner, in.Load, in.PUE)
+			analysis, err := a.AnalyzeBestWindow(ctx, zone, in.Duration, in.Lookahead, model)
 			if err != nil {
 				outcomeCh <- zoneOutcome{zone: zone, err: err}
 				return

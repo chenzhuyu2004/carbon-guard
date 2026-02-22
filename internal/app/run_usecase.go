@@ -21,12 +21,12 @@ func (a *App) Run(ctx context.Context, in RunInput) (RunResult, error) {
 	if in.Duration <= 0 {
 		return RunResult{}, fmt.Errorf("%w: duration must be > 0", ErrInput)
 	}
-	if in.Load < 0 || in.Load > 1 {
-		return RunResult{}, fmt.Errorf("%w: load must be between 0 and 1", ErrInput)
+
+	model, err := normalizeModel(in.Model)
+	if err != nil {
+		return RunResult{}, err
 	}
-	if in.PUE < 1.0 {
-		return RunResult{}, fmt.Errorf("%w: pue must be >= 1.0", ErrInput)
-	}
+	in.Model = model
 
 	computation, err := a.calculateEmissions(ctx, in)
 	if err != nil {
@@ -53,10 +53,10 @@ func (a *App) calculateEmissions(ctx context.Context, in RunInput) (runComputati
 			return runComputation{}, err
 		}
 		duration := sumSegmentDurations(segments)
-		energyIT, energyTotal := estimateEnergyKWh(duration, in.Runner, in.Load, in.PUE)
+		energyIT, energyTotal := estimateEnergyKWh(duration, in.Model.Runner, in.Model.Load, in.Model.PUE)
 		return runComputation{
 			DurationSeconds: duration,
-			EmissionsKg:     calculator.EstimateEmissionsWithSegments(segments, in.Runner, in.Load, in.PUE),
+			EmissionsKg:     calculator.EstimateEmissionsWithSegments(segments, in.Model.Runner, in.Model.Load, in.Model.PUE),
 			EnergyITKWh:     energyIT,
 			EnergyTotalKWh:  energyTotal,
 		}, nil
@@ -71,19 +71,19 @@ func (a *App) calculateEmissions(ctx context.Context, in RunInput) (runComputati
 			return runComputation{}, wrapProviderError(err)
 		}
 		segments := []calculator.Segment{{Duration: in.Duration, CI: ciValue}}
-		energyIT, energyTotal := estimateEnergyKWh(in.Duration, in.Runner, in.Load, in.PUE)
+		energyIT, energyTotal := estimateEnergyKWh(in.Duration, in.Model.Runner, in.Model.Load, in.Model.PUE)
 		return runComputation{
 			DurationSeconds: in.Duration,
-			EmissionsKg:     calculator.EstimateEmissionsWithSegments(segments, in.Runner, in.Load, in.PUE),
+			EmissionsKg:     calculator.EstimateEmissionsWithSegments(segments, in.Model.Runner, in.Model.Load, in.Model.PUE),
 			EnergyITKWh:     energyIT,
 			EnergyTotalKWh:  energyTotal,
 		}, nil
 	}
 
-	energyIT, energyTotal := estimateEnergyKWh(in.Duration, in.Runner, in.Load, in.PUE)
+	energyIT, energyTotal := estimateEnergyKWh(in.Duration, in.Model.Runner, in.Model.Load, in.Model.PUE)
 	return runComputation{
 		DurationSeconds: in.Duration,
-		EmissionsKg:     calculator.EstimateEmissionsAdvanced(in.Duration, in.Runner, in.Region, in.Load, in.PUE),
+		EmissionsKg:     calculator.EstimateEmissionsAdvanced(in.Duration, in.Model.Runner, in.Region, in.Model.Load, in.Model.PUE),
 		EnergyITKWh:     energyIT,
 		EnergyTotalKWh:  energyTotal,
 	}, nil
