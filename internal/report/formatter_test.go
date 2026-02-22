@@ -59,6 +59,20 @@ func TestBuildFromEmissionsTextUsesAutoUnitForReadability(t *testing.T) {
 	}
 }
 
+func TestBuildFromEmissionsUsesProvidedModelContext(t *testing.T) {
+	out := BuildFromEmissions(300, false, 0.001, BuildOptions{
+		EnergyTotalKWh:      1.2,
+		EffectiveCIKgPerKWh: 0.05,
+	})
+
+	if !strings.Contains(out, "Carbon Score: A 🌿") {
+		t.Fatalf("expected score to use provided CI context, got: %s", out)
+	}
+	if !strings.Contains(out, "Equivalent to charging 100.00 smartphones") {
+		t.Fatalf("expected comparison to use provided energy context, got: %s", out)
+	}
+}
+
 func TestAutoScaledEmissionKeepsValueInTargetRange(t *testing.T) {
 	cases := []float64{0.0067, 12, 1200, 0.0002, 1_200_000}
 	for _, emissionsKg := range cases {

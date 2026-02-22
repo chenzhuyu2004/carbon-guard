@@ -24,19 +24,27 @@ func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, e
 	if in.Lookahead <= 0 {
 		return RunAwareOutput{}, fmt.Errorf("%w: lookahead must be > 0", ErrInput)
 	}
+	if in.Load < 0 || in.Load > 1 {
+		return RunAwareOutput{}, fmt.Errorf("%w: load must be between 0 and 1", ErrInput)
+	}
+	if in.PUE < 1.0 {
+		return RunAwareOutput{}, fmt.Errorf("%w: pue must be >= 1.0", ErrInput)
+	}
 	if in.MaxWait <= 0 {
 		return RunAwareOutput{}, fmt.Errorf("%w: max-wait must be > 0", ErrInput)
 	}
 
-	analysis, err := a.AnalyzeBestWindow(ctx, in.Zone, in.Duration, in.Lookahead)
+	analysis, err := a.AnalyzeBestWindow(ctx, in.Zone, in.Duration, in.Lookahead, in.Runner, in.Load, in.PUE)
 	if err != nil {
 		return RunAwareOutput{}, err
 	}
 
 	bestStart := analysis.BestStart.UTC()
 	bestEnd := analysis.BestEnd.UTC()
-	currentCI := analysis.CurrentCI
-	_ = analysis.BestEmission
+	currentCI, err := a.provider.GetCurrentCI(ctx, in.Zone)
+	if err != nil {
+		return RunAwareOutput{}, wrapProviderError(err)
+	}
 
 	startTime := time.Now().UTC()
 	deadline := startTime.Add(in.MaxWait)

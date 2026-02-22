@@ -64,8 +64,10 @@ func run(args []string) error {
 	}
 
 	output := report.BuildFromEmissions(result.DurationSeconds, *asJSON, result.EmissionsKg, report.BuildOptions{
-		BudgetKg:   *budgetKg,
-		BaselineKg: *baselineKg,
+		BudgetKg:            *budgetKg,
+		BaselineKg:          *baselineKg,
+		EnergyTotalKWh:      result.EnergyTotalKWh,
+		EffectiveCIKgPerKWh: result.EffectiveCIKgPerKWh,
 	})
 	fmt.Print(output)
 

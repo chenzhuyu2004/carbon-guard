@@ -65,6 +65,9 @@ func runAware(args []string) error {
 		Duration:  *duration,
 		Threshold: *threshold,
 		Lookahead: *lookahead,
+		Runner:    defaultSchedulingRunner,
+		Load:      defaultSchedulingLoad,
+		PUE:       defaultSchedulingPUE,
 		MaxWait:   time.Duration(*maxWait * float64(time.Hour)),
 		PollEvery: 15 * time.Minute,
 		StatusFunc: func(msg string) {

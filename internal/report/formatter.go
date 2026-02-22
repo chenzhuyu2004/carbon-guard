@@ -11,8 +11,10 @@ import (
 const divider = "-----------------------------------"
 
 type BuildOptions struct {
-	BudgetKg   float64
-	BaselineKg float64
+	BudgetKg            float64
+	BaselineKg          float64
+	EnergyTotalKWh      float64
+	EffectiveCIKgPerKWh float64
 }
 
 type emissionUnit struct {
@@ -62,8 +64,8 @@ func BuildFromEmissions(durationSeconds int, asJSON bool, emissions float64, opt
 		return string(data) + "\n"
 	}
 
-	smartphoneCharges, evKilometers := buildComparisons(emissions)
-	score, emoji := carbonScore(emissions, durationSeconds)
+	smartphoneCharges, evKilometers := buildComparisons(emissions, opts)
+	score, emoji := carbonScore(emissions, durationSeconds, opts)
 	emissionsLine := formatEmissionDisplay(emissions)
 	report := fmt.Sprintf(
 		"%s\nCarbon Report\n%s\nDuration: %ds\nEstimated Emissions: %s\nCarbon Score: %s %s\nFun Facts:\n- Equivalent to charging %.2f smartphones\n- Equivalent to driving %.2f km in an EV\n",
@@ -99,29 +101,42 @@ func round2(v float64) float64 {
 	return math.Round(v*100) / 100
 }
 
-func buildComparisons(emissionsKg float64) (float64, float64) {
-	if emissionsKg <= 0 {
+func buildComparisons(emissionsKg float64, opts BuildOptions) (float64, float64) {
+	energyKWh := opts.EnergyTotalKWh
+	if energyKWh <= 0 {
+		if emissionsKg <= 0 {
+			return 0, 0
+		}
+		energyKWh = emissionsKg / pkg.EmissionsFactorKgPerKWh
+	}
+	if energyKWh <= 0 {
 		return 0, 0
 	}
 
-	energyKWh := emissionsKg / pkg.EmissionsFactorKgPerKWh
 	smartphoneCharges := energyKWh / pkg.SmartphoneChargeKWh
 	evKilometers := energyKWh / pkg.EVKilometerKWh
 
 	return smartphoneCharges, evKilometers
 }
 
-func carbonScore(emissionsKg float64, durationSeconds int) (string, string) {
-	if durationSeconds <= 0 {
+func carbonScore(emissionsKg float64, durationSeconds int, opts BuildOptions) (string, string) {
+	ciGPerKWh := 0.0
+	if opts.EffectiveCIKgPerKWh > 0 {
+		ciGPerKWh = opts.EffectiveCIKgPerKWh * 1000
+	} else {
+		if durationSeconds <= 0 {
+			return "C", "🏭"
+		}
+		energyKWh := float64(durationSeconds) * pkg.PowerWatts / pkg.WattsPerKilowatt / pkg.SecondsPerHour
+		if energyKWh <= 0 {
+			return "C", "🏭"
+		}
+		ciGPerKWh = (emissionsKg / energyKWh) * 1000
+	}
+	if ciGPerKWh <= 0 {
 		return "C", "🏭"
 	}
 
-	energyKWh := float64(durationSeconds) * pkg.PowerWatts / pkg.WattsPerKilowatt / pkg.SecondsPerHour
-	if energyKWh <= 0 {
-		return "C", "🏭"
-	}
-
-	ciGPerKWh := (emissionsKg / energyKWh) * 1000
 	switch {
 	case ciGPerKWh < pkg.CIScoreGreenMaxGPerKWh:
 		return "A", "🌿"
