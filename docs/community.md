@@ -1,6 +1,6 @@
 # Community Guide
 
-This document explains how repository features are used.
+This document explains how repository channels and automation are used.
 
 ## Channels
 
@@ -11,7 +11,7 @@ This document explains how repository features are used.
 
 ## Templates and Standards
 
-- Issue templates: bug report and feature request forms.
+- Issue templates: bug report, feature request, and question routing forms.
 - PR template: checklist for tests, lint, docs, and changelog.
 - Code owners: default owner routing via `.github/CODEOWNERS`.
 
@@ -27,6 +27,14 @@ This document explains how repository features are used.
 
 - Required approvals: `1+`
 - Optionally require code-owner reviews.
+
+## Automation Workflows
+
+- `release-drafter.yml`: maintain draft release notes from merged PR labels.
+- `labeler.yml`: auto-apply labels to PRs by changed files.
+- `stale.yml`: mark/close inactive issues and PRs on schedule.
+- `greetings.yml`: first-contribution greeting on issues and PRs.
+- `sync-labels.yml`: sync repository labels from `.github/labels.json`.
 
 ## Projects and Wiki
 

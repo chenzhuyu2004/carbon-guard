@@ -1,0 +1,32 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+change-template: '- $TITLE (#$NUMBER) @$AUTHOR'
+no-changes-template: '- No user-facing changes in this cycle.'
+
+categories:
+  - title: 'Features'
+    labels:
+      - enhancement
+  - title: 'Documentation'
+    labels:
+      - documentation
+  - title: 'Dependencies'
+    labels:
+      - dependencies
+  - title: 'CI/CD'
+    labels:
+      - github_actions
+  - title: 'Bug Fixes'
+    labels:
+      - bug
+
+exclude-labels:
+  - question
+  - invalid
+  - duplicate
+  - wontfix
+
+template: |
+  ## What's Changed
+
+  $CHANGES

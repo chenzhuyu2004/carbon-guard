@@ -1,0 +1,27 @@
+name: Stale
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mark stale issues and pull requests
+        uses: actions/stale@5bef64f19d7facfb25b37b414482c7164d639639
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          days-before-stale: 30
+          days-before-close: 14
+          stale-issue-message: "This issue has gone stale due to inactivity. It will be closed in 14 days unless updated."
+          stale-pr-message: "This pull request has gone stale due to inactivity. It will be closed in 14 days unless updated."
+          stale-issue-label: "wontfix"
+          stale-pr-label: "wontfix"
+          exempt-issue-labels: "security"
+          exempt-pr-labels: "dependencies,github_actions"

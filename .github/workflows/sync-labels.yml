@@ -1,0 +1,62 @@
+name: Sync Labels
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/labels.json"
+      - ".github/workflows/sync-labels.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sync-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Sync repository labels
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        with:
+          script: |
+            const fs = require('fs');
+            const path = '.github/labels.json';
+            const desired = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const { owner, repo } = context.repo;
+
+            const existing = await github.paginate(github.rest.issues.listLabelsForRepo, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+
+            const existingByName = new Map(existing.map((l) => [l.name, l]));
+
+            for (const label of desired) {
+              const current = existingByName.get(label.name);
+              if (!current) {
+                await github.rest.issues.createLabel({ owner, repo, ...label });
+                core.info(`created label: ${label.name}`);
+                continue;
+              }
+
+              const currentDesc = current.description || '';
+              const desiredDesc = label.description || '';
+              if (current.color.toLowerCase() !== label.color.toLowerCase() || currentDesc !== desiredDesc) {
+                await github.rest.issues.updateLabel({
+                  owner,
+                  repo,
+                  name: current.name,
+                  color: label.color,
+                  description: label.description,
+                  new_name: label.name,
+                });
+                core.info(`updated label: ${label.name}`);
+              }
+            }
+
+            core.info('label sync complete (non-destructive)');

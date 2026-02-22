@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+title: "Carbon Guard"
+message: "If you use Carbon Guard in research or publications, please cite this software."
+type: software
+authors:
+  - family-names: "Chen"
+    given-names: "Zhuyu"
+repository-code: "https://github.com/chenzhuyu2004/carbon-guard"
+url: "https://github.com/chenzhuyu2004/carbon-guard"
+license: "MIT"
+version: "v1.0.2"
+date-released: "2026-02-21"
