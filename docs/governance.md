@@ -41,3 +41,11 @@ If you add maintainers later, switch to team mode:
 - Discussions: enabled
 - Projects: enabled
 - Wiki: disabled (canonical docs live in `docs/`)
+
+## Repository Operations Automation
+
+- Release drafting by label category
+- PR auto-labeling by file scope
+- Scheduled stale triage
+- First-time contributor greetings
+- Label source-of-truth sync (`.github/labels.json`)

@@ -121,3 +121,5 @@ Start with [`docs/index.md`](docs/index.md).
 - Changelog: [`CHANGELOG.md`](CHANGELOG.md)
 - License: [`LICENSE`](LICENSE)
 - Support: [`SUPPORT.md`](SUPPORT.md)
+- Citation: [`CITATION.cff`](CITATION.cff)
+- Third-Party Notices: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)

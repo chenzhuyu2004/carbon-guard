@@ -1,0 +1,23 @@
+name: Greetings
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: First interaction greeting
+        uses: actions/first-interaction@2d4393e6bc0e2efb2e48fba7e06819c3bf61ffc9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: "Thanks for opening your first issue in Carbon Guard. Please make sure you used the issue template and included reproducible details."
+          pr-message: "Thanks for your first pull request to Carbon Guard. Please confirm tests and docs checks are passing."
