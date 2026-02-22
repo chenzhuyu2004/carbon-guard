@@ -42,6 +42,9 @@ func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, e
 	if err := validateMaxWait(in.MaxWait); err != nil {
 		return RunAwareOutput{}, err
 	}
+	if err := validateNoRegretConfig(in.NoRegretMaxDelay, in.NoRegretMinReductionPct); err != nil {
+		return RunAwareOutput{}, err
+	}
 	model, err := normalizeModel(in.Model)
 	if err != nil {
 		return RunAwareOutput{}, err
@@ -60,6 +63,15 @@ func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, e
 
 	bestStart := analysis.BestStart.UTC()
 	bestEnd := analysis.BestEnd.UTC()
+	if shouldRunNowByNoRegretGuard(startTime, bestStart, analysis.Reduction, in.NoRegretMaxDelay, in.NoRegretMinReductionPct) {
+		message := fmt.Sprintf(
+			"No-regret guard triggered: waiting %s for only %.2f%% expected reduction",
+			bestStart.Sub(startTime).Round(time.Second),
+			analysis.Reduction,
+		)
+		return RunAwareOutput{Message: message}, nil
+	}
+
 	pollEvery := in.PollEvery
 	if pollEvery <= 0 {
 		pollEvery = 15 * time.Minute
@@ -148,4 +160,22 @@ func resolveRunAwareThresholds(in RunAwareInput) (float64, float64, error) {
 	}
 
 	return enter, exit, nil
+}
+
+func shouldRunNowByNoRegretGuard(
+	startTime time.Time,
+	bestStart time.Time,
+	bestReductionPct float64,
+	maxDelay time.Duration,
+	minReductionPct float64,
+) bool {
+	if maxDelay <= 0 || minReductionPct <= 0 {
+		return false
+	}
+
+	waitDelay := bestStart.UTC().Sub(startTime.UTC())
+	if waitDelay <= 0 {
+		return false
+	}
+	return waitDelay > maxDelay && bestReductionPct < minReductionPct
 }

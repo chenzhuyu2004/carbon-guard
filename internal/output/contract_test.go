@@ -39,6 +39,9 @@ func TestHandleExitJSON(t *testing.T) {
 	if resp.Code != cgerrors.ProviderError {
 		t.Fatalf("json code = %d, expected %d", resp.Code, cgerrors.ProviderError)
 	}
+	if resp.SchemaVersion != "v1" {
+		t.Fatalf("json schema_version = %q, expected %q", resp.SchemaVersion, "v1")
+	}
 	if resp.Error != "provider failure" {
 		t.Fatalf("json error = %q, expected %q", resp.Error, "provider failure")
 	}

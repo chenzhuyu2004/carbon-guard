@@ -6,6 +6,7 @@ This page is the authoritative reference for all commands.
 
 - Use `--json` on `run` for machine-readable output.
 - Use `--output text|json` on `optimize` and `optimize-global`.
+- All JSON outputs include `schema_version` for contract stability.
 - Commands using live carbon data require `ELECTRICITY_MAPS_API_KEY`.
 - Shared defaults can be injected via config/env for `suggest`, `run-aware`, `optimize`, and `optimize-global`.
 - Zone resolution supports `--zone-mode strict|fallback|auto`:
@@ -97,6 +98,8 @@ carbon-guard run-aware --duration <seconds> [--zone <ZONE>] [flags]
 | `--threshold-exit` | float | `-1` | No | Keep waiting when current CI is `>= threshold-exit` (`kgCO2/kWh`). Must be `>= threshold-enter`. |
 | `--lookahead` | int | `6` | No | Forecast lookahead in hours. |
 | `--max-wait` | float | `6` | No | Maximum wait time in hours. |
+| `--max-delay-for-gain` | duration | `0s` | No | No-regret guard. If best window delay exceeds this value and reduction is below `--min-reduction-for-wait`, run immediately. |
+| `--min-reduction-for-wait` | float | `0` | No | No-regret guard. Minimum expected reduction percentage required to justify waiting. |
 | `--config` | string | `""` | No | Path to JSON config file for shared defaults. |
 | `--cache-dir` | string | `~/.carbon-guard` | No | Forecast cache directory. |
 | `--cache-ttl` | duration | `10m` | No | Cache TTL (Go duration format). |

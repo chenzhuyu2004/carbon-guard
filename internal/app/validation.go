@@ -72,6 +72,16 @@ func validateWaitCost(waitCost float64) error {
 	return nil
 }
 
+func validateNoRegretConfig(maxDelay time.Duration, minReductionPct float64) error {
+	if maxDelay < 0 {
+		return fmt.Errorf("%w: max-delay-for-gain must be >= 0", ErrInput)
+	}
+	if minReductionPct < 0 {
+		return fmt.Errorf("%w: min-reduction-for-wait must be >= 0", ErrInput)
+	}
+	return nil
+}
+
 func validateResampleConfig(fillMode string, maxFillAge time.Duration) error {
 	mode := strings.TrimSpace(strings.ToLower(fillMode))
 	if mode != "" && mode != "forward" && mode != "strict" {

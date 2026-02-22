@@ -66,8 +66,14 @@ type RunAwareInput struct {
 	Lookahead      int
 	Model          ModelContext
 	MaxWait        time.Duration
-	PollEvery      time.Duration
-	StatusFunc     func(string)
+	// NoRegretMaxDelay disables waiting for marginal gains when the best window is too far away.
+	// NoRegretMaxDelay 用于限制“收益很小却等待太久”的场景；<=0 表示关闭。
+	NoRegretMaxDelay time.Duration
+	// NoRegretMinReductionPct defines the minimum expected reduction (%) required to justify waiting.
+	// NoRegretMinReductionPct 定义“值得等待”的最小预期减排百分比；<=0 表示关闭。
+	NoRegretMinReductionPct float64
+	PollEvery               time.Duration
+	StatusFunc              func(string)
 }
 
 type RunAwareOutput struct {

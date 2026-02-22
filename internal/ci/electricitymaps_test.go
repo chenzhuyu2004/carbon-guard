@@ -72,6 +72,9 @@ func TestGetCurrentCINon200IncludesBody(t *testing.T) {
 	if !strings.Contains(err.Error(), "429") || !strings.Contains(err.Error(), "rate limited") {
 		t.Fatalf("error does not include status/body: %v", err)
 	}
+	if !IsKind(err, ErrorKindRateLimit) {
+		t.Fatalf("expected provider error kind %q, got %v", ErrorKindRateLimit, err)
+	}
 }
 
 func TestGetForecastCIConvertsAndSorts(t *testing.T) {
@@ -131,5 +134,29 @@ func TestGetCurrentCIMissingAPIKey(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "ELECTRICITY_MAPS_API_KEY") {
 		t.Fatalf("error does not mention ELECTRICITY_MAPS_API_KEY: %v", err)
+	}
+	if !IsKind(err, ErrorKindAuth) {
+		t.Fatalf("expected provider error kind %q, got %v", ErrorKindAuth, err)
+	}
+}
+
+func TestGetForecastCIInvalidDataClassified(t *testing.T) {
+	now := time.Now().UTC().Format(time.RFC3339)
+	setupElectricityMapsTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+		  "forecast": [
+		    {"datetime": "` + now + `", "carbonIntensity": 0}
+		  ]
+		}`))
+	})
+
+	provider := &ElectricityMapsProvider{APIKey: "test-key"}
+	_, err := provider.GetForecastCI(context.Background(), "DE", 1)
+	if err == nil {
+		t.Fatalf("expected invalid forecast data error")
+	}
+	if !IsKind(err, ErrorKindInvalidData) {
+		t.Fatalf("expected provider error kind %q, got %v", ErrorKindInvalidData, err)
 	}
 }

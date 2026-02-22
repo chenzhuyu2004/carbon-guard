@@ -23,6 +23,15 @@ All notable changes to this project are documented in this file.
 - Shared CLI config package (`internal/config`) with JSON config + env fallback.
 - New command flag `--config` on `run-aware`, `optimize`, and `optimize-global`.
 - Example config file: `docs/examples/carbon-guard.json`.
+- `run-aware` no-regret guard flags:
+  - `--max-delay-for-gain`
+  - `--min-reduction-for-wait`
+- Provider error taxonomy in `internal/ci`:
+  - `auth`
+  - `rate_limit`
+  - `network`
+  - `upstream`
+  - `invalid_data`
 
 ### Changed
 
@@ -32,6 +41,11 @@ All notable changes to this project are documented in this file.
 - Shared option precedence is now consistently `Flags > Env > Config File > Defaults`.
 - CI build job now includes `go vet ./...`.
 - Action smoke workflow uses explicit `duration` input for deterministic validation.
+- Machine-readable JSON outputs now include `schema_version`:
+  - `run --json`
+  - `optimize --output json`
+  - `optimize-global --output json`
+  - JSON error contract
 
 ### Fixed
 

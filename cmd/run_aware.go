@@ -29,6 +29,8 @@ func runAware(args []string) error {
 	thresholdExit := fs.Float64("threshold-exit", -1, "continue waiting when CI is >= this threshold in kgCO2/kWh")
 	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")
 	maxWait := fs.Float64("max-wait", 6, "maximum wait time in hours")
+	maxDelayForGainRaw := fs.String("max-delay-for-gain", "0s", "no-regret guard: maximum acceptable delay before waiting is skipped")
+	minReductionForWait := fs.Float64("min-reduction-for-wait", 0, "no-regret guard: minimum expected reduction percentage required to justify waiting")
 	cacheDirRaw, cacheTTLRaw := addCacheFlags(fs, defaults.CacheDir, defaults.CacheTTL)
 
 	if err := fs.Parse(args); err != nil {
@@ -43,6 +45,13 @@ func runAware(args []string) error {
 	}
 	if *maxWait <= 0 {
 		return cgerrors.Newf(cgerrors.InputError, "max-wait must be > 0")
+	}
+	if *minReductionForWait < 0 {
+		return cgerrors.Newf(cgerrors.InputError, "min-reduction-for-wait must be >= 0")
+	}
+	maxDelayForGain, err := time.ParseDuration(*maxDelayForGainRaw)
+	if err != nil || maxDelayForGain < 0 {
+		return cgerrors.Newf(cgerrors.InputError, "max-delay-for-gain must be a non-negative duration")
 	}
 
 	effectiveEnter := *thresholdEnter
@@ -83,15 +92,17 @@ func runAware(args []string) error {
 
 	service := appsvc.New(newProviderAdapter(buildLiveProvider(apiKey, cacheDir, cacheTTL)))
 	out, err := service.RunAware(context.Background(), appsvc.RunAwareInput{
-		Zone:           resolvedZone.Zone,
-		Duration:       *duration,
-		Threshold:      *threshold,
-		ThresholdEnter: effectiveEnter,
-		ThresholdExit:  effectiveExit,
-		Lookahead:      *lookahead,
-		Model:          defaultModelContext(),
-		MaxWait:        time.Duration(*maxWait * float64(time.Hour)),
-		PollEvery:      15 * time.Minute,
+		Zone:                    resolvedZone.Zone,
+		Duration:                *duration,
+		Threshold:               *threshold,
+		ThresholdEnter:          effectiveEnter,
+		ThresholdExit:           effectiveExit,
+		Lookahead:               *lookahead,
+		Model:                   defaultModelContext(),
+		MaxWait:                 time.Duration(*maxWait * float64(time.Hour)),
+		NoRegretMaxDelay:        maxDelayForGain,
+		NoRegretMinReductionPct: *minReductionForWait,
+		PollEvery:               15 * time.Minute,
 		StatusFunc: func(msg string) {
 			fmt.Println(msg)
 		},

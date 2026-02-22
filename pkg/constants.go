@@ -1,6 +1,8 @@
 package pkg
 
 const (
+	JSONSchemaVersion = "v1"
+
 	PowerWatts              = 200.0
 	EmissionsFactorKgPerKWh = 0.4
 	WattsPerKilowatt        = 1000.0
