@@ -24,10 +24,11 @@ jobs:
 
       - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
         with:
-          go-version: 1.22.x
+          go-version: 1.26.x
 
       - run: go mod tidy
       - run: go test ./...
+      - run: go test -race ./...
       - run: go build -o carbon-guard
 
       - name: Calculate runtime and emissions
