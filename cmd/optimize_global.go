@@ -36,7 +36,7 @@ func optimizeGlobal(args []string) error {
 
 	addConfigFlag(fs, defaults.ConfigPath)
 	zones := fs.String("zones", "", "comma-separated Electricity Maps zones")
-	zoneMode := fs.String("zone-mode", "fallback", "zone resolution mode: strict|fallback")
+	zoneMode := fs.String("zone-mode", "fallback", "zone resolution mode: strict|fallback|auto")
 	duration := fs.Int("duration", 0, "duration in seconds")
 	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")
 	waitCost := fs.Float64("wait-cost", 0, "waiting penalty in kgCO2 per hour")

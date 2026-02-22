@@ -21,7 +21,7 @@ func suggest(args []string) error {
 
 	addConfigFlag(fs, defaults.ConfigPath)
 	zone := fs.String("zone", "", "electricity maps zone")
-	zoneMode := fs.String("zone-mode", "fallback", "zone resolution mode: strict|fallback")
+	zoneMode := fs.String("zone-mode", "fallback", "zone resolution mode: strict|fallback|auto")
 	duration := fs.Int("duration", 0, "duration in seconds")
 	threshold := fs.Float64("threshold", 0.35, "current CI threshold in kgCO2/kWh")
 	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")

@@ -22,7 +22,7 @@ func runAware(args []string) error {
 
 	addConfigFlag(fs, defaults.ConfigPath)
 	zone := fs.String("zone", "", "electricity maps zone")
-	zoneMode := fs.String("zone-mode", "fallback", "zone resolution mode: strict|fallback")
+	zoneMode := fs.String("zone-mode", "fallback", "zone resolution mode: strict|fallback|auto")
 	duration := fs.Int("duration", 0, "duration in seconds")
 	threshold := fs.Float64("threshold", 0.35, "legacy CI threshold in kgCO2/kWh (used when threshold-enter/exit are unset)")
 	thresholdEnter := fs.Float64("threshold-enter", -1, "run when CI is <= this threshold in kgCO2/kWh")

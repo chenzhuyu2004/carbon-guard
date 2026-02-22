@@ -79,12 +79,13 @@ If both are unset, `--threshold` (legacy flag) is used for backward compatibilit
 
 Commands with zone inputs support:
 
-- `--zone-mode strict|fallback` (default: `fallback`)
+- `--zone-mode strict|fallback|auto` (default: `fallback`)
 
 Behavior:
 
 1. `strict`: zone(s) must be provided via CLI (`--zone` / `--zones`).
 2. `fallback`: if CLI zone flags are empty, commands use `CARBON_GUARD_ZONE` / `CARBON_GUARD_ZONES`.
+3. `auto`: run fallback first, then attempt locale/timezone inference using `LC_ALL`, `LC_MESSAGES`, `LANG`, and `TZ`.
 
 Examples:
 
@@ -92,6 +93,7 @@ Examples:
 CARBON_GUARD_ZONE=DE carbon-guard suggest --duration 1200
 CARBON_GUARD_ZONES=DE,FR carbon-guard optimize --duration 1800
 carbon-guard run-aware --zone-mode strict --zone US-NY --duration 900
+LANG=de_DE.UTF-8 carbon-guard suggest --zone-mode auto --duration 900
 ```
 
 Example:
