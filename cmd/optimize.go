@@ -36,16 +36,15 @@ func optimize(args []string) error {
 	zones := fs.String("zones", "", "comma-separated Electricity Maps zones")
 	duration := fs.Int("duration", 0, "duration in seconds")
 	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")
-	timeoutStr := fs.String("timeout", "30s", "operation timeout")
-	outputMode := fs.String("output", "text", "output format: text|json")
-	cacheDirRaw := fs.String("cache-dir", "~/.carbon-guard", "forecast cache directory")
-	cacheTTLRaw := fs.String("cache-ttl", "10m", "forecast cache TTL")
+	timeoutStr := addTimeoutFlag(fs)
+	outputMode := addOutputFlag(fs)
+	cacheDirRaw, cacheTTLRaw := addCacheFlags(fs)
 
 	if err := fs.Parse(args); err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
 	}
-	if *outputMode != "text" && *outputMode != "json" {
-		return cgerrors.Newf(cgerrors.InputError, "output must be text or json")
+	if err := validateOutputMode(*outputMode); err != nil {
+		return cgerrors.New(err, cgerrors.InputError)
 	}
 	if *zones == "" {
 		return cgerrors.Newf(cgerrors.InputError, "zones is required")
@@ -59,9 +58,9 @@ func optimize(args []string) error {
 	if *duration > *lookahead*3600 {
 		return cgerrors.Newf(cgerrors.InputError, "duration %ds exceeds forecast coverage %ds", *duration, *lookahead*3600)
 	}
-	timeout, err := time.ParseDuration(*timeoutStr)
-	if err != nil || timeout <= 0 {
-		return cgerrors.Newf(cgerrors.InputError, "invalid timeout duration")
+	timeout, err := parseTimeout(*timeoutStr)
+	if err != nil {
+		return cgerrors.New(err, cgerrors.InputError)
 	}
 	cacheDir, cacheTTL, err := parseCacheConfig(*cacheDirRaw, *cacheTTLRaw)
 	if err != nil {

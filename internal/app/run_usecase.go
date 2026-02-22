@@ -18,8 +18,8 @@ type runComputation struct {
 }
 
 func (a *App) Run(ctx context.Context, in RunInput) (RunResult, error) {
-	if in.Duration <= 0 {
-		return RunResult{}, fmt.Errorf("%w: duration must be > 0", ErrInput)
+	if err := validateDurationSeconds(in.Duration); err != nil {
+		return RunResult{}, err
 	}
 
 	model, err := normalizeModel(in.Model)
@@ -53,6 +53,9 @@ func (a *App) calculateEmissions(ctx context.Context, in RunInput) (runComputati
 			return runComputation{}, err
 		}
 		duration := sumSegmentDurations(segments)
+		if err := validateDurationSeconds(duration); err != nil {
+			return runComputation{}, err
+		}
 		energyIT, energyTotal := estimateEnergyKWh(duration, in.Model.Runner, in.Model.Load, in.Model.PUE)
 		return runComputation{
 			DurationSeconds: duration,

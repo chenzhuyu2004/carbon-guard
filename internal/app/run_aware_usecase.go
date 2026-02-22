@@ -15,17 +15,20 @@ func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, e
 	if in.Zone == "" {
 		return RunAwareOutput{}, fmt.Errorf("%w: zone is required", ErrInput)
 	}
-	if in.Duration <= 0 {
-		return RunAwareOutput{}, fmt.Errorf("%w: duration must be > 0", ErrInput)
+	if err := validateDurationSeconds(in.Duration); err != nil {
+		return RunAwareOutput{}, err
 	}
 	if in.Threshold <= 0 {
 		return RunAwareOutput{}, fmt.Errorf("%w: threshold must be > 0", ErrInput)
 	}
-	if in.Lookahead <= 0 {
-		return RunAwareOutput{}, fmt.Errorf("%w: lookahead must be > 0", ErrInput)
+	if err := validateLookaheadHours(in.Lookahead); err != nil {
+		return RunAwareOutput{}, err
 	}
-	if in.MaxWait <= 0 {
-		return RunAwareOutput{}, fmt.Errorf("%w: max-wait must be > 0", ErrInput)
+	if err := validateDurationWithinLookahead(in.Duration, in.Lookahead); err != nil {
+		return RunAwareOutput{}, err
+	}
+	if err := validateMaxWait(in.MaxWait); err != nil {
+		return RunAwareOutput{}, err
 	}
 	model, err := normalizeModel(in.Model)
 	if err != nil {
