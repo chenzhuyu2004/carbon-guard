@@ -18,8 +18,9 @@ func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, e
 	if err := validateDurationSeconds(in.Duration); err != nil {
 		return RunAwareOutput{}, err
 	}
-	if in.Threshold <= 0 {
-		return RunAwareOutput{}, fmt.Errorf("%w: threshold must be > 0", ErrInput)
+	thresholdEnter, thresholdExit, err := resolveRunAwareThresholds(in)
+	if err != nil {
+		return RunAwareOutput{}, err
 	}
 	if err := validateLookaheadHours(in.Lookahead); err != nil {
 		return RunAwareOutput{}, err
@@ -72,12 +73,16 @@ func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, e
 			return RunAwareOutput{}, wrapProviderError(err)
 		}
 
-		if currentCI <= in.Threshold {
-			return RunAwareOutput{Message: "CI dropped below threshold, running now"}, nil
+		if currentCI <= thresholdEnter {
+			return RunAwareOutput{Message: "CI dropped below threshold-enter, running now"}, nil
 		}
 
 		if in.StatusFunc != nil {
-			in.StatusFunc(fmt.Sprintf("CI too high (%.2f > %.2f)", currentCI, in.Threshold))
+			if currentCI >= thresholdExit {
+				in.StatusFunc(fmt.Sprintf("CI too high (%.2f >= %.2f)", currentCI, thresholdExit))
+			} else {
+				in.StatusFunc(fmt.Sprintf("CI in hysteresis band (%.2f < %.2f < %.2f)", thresholdEnter, currentCI, thresholdExit))
+			}
 			in.StatusFunc("Waiting 15m...")
 		}
 
@@ -101,4 +106,28 @@ func (a *App) RunAware(ctx context.Context, in RunAwareInput) (RunAwareOutput, e
 		case <-timer.C:
 		}
 	}
+}
+
+func resolveRunAwareThresholds(in RunAwareInput) (float64, float64, error) {
+	enter := in.ThresholdEnter
+	exit := in.ThresholdExit
+	legacy := in.Threshold
+
+	if enter <= 0 {
+		enter = legacy
+	}
+	if exit <= 0 {
+		exit = legacy
+	}
+	if enter <= 0 {
+		return 0, 0, fmt.Errorf("%w: threshold-enter must be > 0", ErrInput)
+	}
+	if exit <= 0 {
+		return 0, 0, fmt.Errorf("%w: threshold-exit must be > 0", ErrInput)
+	}
+	if enter > exit {
+		return 0, 0, fmt.Errorf("%w: threshold-enter must be <= threshold-exit", ErrInput)
+	}
+
+	return enter, exit, nil
 }

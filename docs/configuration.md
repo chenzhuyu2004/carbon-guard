@@ -66,6 +66,13 @@ Commands using forecast data support:
 - `--cache-ttl` (default: `10m`)
 - `--config` (optional JSON defaults)
 
+`run-aware` also supports hysteresis thresholds:
+
+- `--threshold-enter`
+- `--threshold-exit`
+
+If both are unset, `--threshold` (legacy flag) is used for backward compatibility.
+
 Example:
 
 ```bash

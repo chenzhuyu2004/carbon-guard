@@ -133,10 +133,11 @@ func TestRunAwareMaxWaitExceededReturnsErrMaxWaitExceeded(t *testing.T) {
 	})
 
 	_, err := a.RunAware(context.Background(), RunAwareInput{
-		Zone:      "DE",
-		Duration:  300,
-		Threshold: 0.1,
-		Lookahead: 3,
+		Zone:           "DE",
+		Duration:       300,
+		ThresholdEnter: 0.1,
+		ThresholdExit:  0.2,
+		Lookahead:      3,
 		Model: ModelContext{
 			Runner: "ubuntu",
 			Load:   0.6,
@@ -147,5 +148,70 @@ func TestRunAwareMaxWaitExceededReturnsErrMaxWaitExceeded(t *testing.T) {
 	})
 	if !errors.Is(err, ErrMaxWaitExceeded) {
 		t.Fatalf("expected ErrMaxWaitExceeded, got %v", err)
+	}
+}
+
+func TestRunAwareThresholdOrderValidationReturnsErrInput(t *testing.T) {
+	now := time.Now().UTC().Add(2 * time.Hour)
+	a := New(&fakeProvider{
+		currentByZone: map[string]float64{"DE": 0.9},
+		forecastByZone: map[string][]scheduling.ForecastPoint{
+			"DE": {
+				{Timestamp: now, CI: 0.5},
+				{Timestamp: now.Add(time.Hour), CI: 0.5},
+			},
+		},
+	})
+
+	_, err := a.RunAware(context.Background(), RunAwareInput{
+		Zone:           "DE",
+		Duration:       300,
+		ThresholdEnter: 0.5,
+		ThresholdExit:  0.4,
+		Lookahead:      3,
+		Model: ModelContext{
+			Runner: "ubuntu",
+			Load:   0.6,
+			PUE:    1.2,
+		},
+		MaxWait:   20 * time.Millisecond,
+		PollEvery: 5 * time.Millisecond,
+	})
+	if !errors.Is(err, ErrInput) {
+		t.Fatalf("expected ErrInput, got %v", err)
+	}
+}
+
+func TestRunAwareRunsWhenBelowThresholdEnter(t *testing.T) {
+	now := time.Now().UTC().Add(2 * time.Hour)
+	a := New(&fakeProvider{
+		currentByZone: map[string]float64{"DE": 0.39},
+		forecastByZone: map[string][]scheduling.ForecastPoint{
+			"DE": {
+				{Timestamp: now, CI: 0.5},
+				{Timestamp: now.Add(time.Hour), CI: 0.5},
+			},
+		},
+	})
+
+	out, err := a.RunAware(context.Background(), RunAwareInput{
+		Zone:           "DE",
+		Duration:       300,
+		ThresholdEnter: 0.40,
+		ThresholdExit:  0.45,
+		Lookahead:      3,
+		Model: ModelContext{
+			Runner: "ubuntu",
+			Load:   0.6,
+			PUE:    1.2,
+		},
+		MaxWait:   200 * time.Millisecond,
+		PollEvery: 5 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("RunAware() unexpected error: %v", err)
+	}
+	if out.Message == "" {
+		t.Fatalf("expected non-empty run-aware message")
 	}
 }
