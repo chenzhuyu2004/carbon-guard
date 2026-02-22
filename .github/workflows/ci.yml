@@ -161,13 +161,14 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Record action start time
-        run: echo "GH_ACTION_START_TIME=$(($(date +%s)-60))" >> $GITHUB_ENV
+        id: start
+        run: echo "start_time=$(($(date +%s)-60))" >> "$GITHUB_OUTPUT"
 
       - name: Run local Carbon Guard action
         id: carbon
         uses: ./
         with:
-          start_time: ${{ env.GH_ACTION_START_TIME }}
+          start_time: ${{ steps.start.outputs.start_time }}
           budget_kg: "0.1000"
           baseline_kg: "0.0500"
           fail_on_budget: "false"
