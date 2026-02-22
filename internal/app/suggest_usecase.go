@@ -15,6 +15,7 @@ func (a *App) AnalyzeBestWindow(
 	duration int,
 	lookahead int,
 	model ModelContext,
+	waitCost float64,
 ) (SuggestionAnalysis, error) {
 	if a == nil || a.provider == nil {
 		return SuggestionAnalysis{}, fmt.Errorf("%w: provider is not configured", ErrProvider)
@@ -34,6 +35,9 @@ func (a *App) AnalyzeBestWindow(
 		return SuggestionAnalysis{}, err
 	}
 	if err := validateDurationWithinLookahead(duration, lookahead); err != nil {
+		return SuggestionAnalysis{}, err
+	}
+	if err := validateWaitCost(waitCost); err != nil {
 		return SuggestionAnalysis{}, err
 	}
 
@@ -73,9 +77,28 @@ func (a *App) AnalyzeBestWindow(
 	currentEmission := currentWindow.Emission
 	currentStart := currentWindow.Start.UTC()
 	currentEnd := currentWindow.End.UTC()
+	currentScore := currentEmission + waitCost*maxFloat(currentStart.Sub(requestStart).Hours(), 0)
 	bestStart := bestWindow.Start.UTC()
 	bestEnd := bestWindow.End.UTC()
 	bestEmission := bestWindow.Emission
+	bestScore := bestEmission + waitCost*maxFloat(bestStart.Sub(requestStart).Hours(), 0)
+
+	for _, point := range forecast {
+		start := point.Timestamp.UTC()
+		emission, ok := evaluator.EstimateAt(start, duration, model.Runner, model.Load, model.PUE)
+		if !ok {
+			break
+		}
+
+		score := emission + waitCost*maxFloat(start.Sub(requestStart).Hours(), 0)
+		if score < bestScore || (score == bestScore && emission < bestEmission) {
+			bestScore = score
+			bestEmission = emission
+			bestStart = start.UTC()
+			bestEnd = start.Add(time.Duration(duration) * time.Second).UTC()
+		}
+	}
+
 	reduction := 0.0
 	if currentEmission > 0 {
 		reduction = (currentEmission - bestEmission) / currentEmission * 100
@@ -85,9 +108,11 @@ func (a *App) AnalyzeBestWindow(
 		CurrentEmission: currentEmission,
 		CurrentStart:    currentStart,
 		CurrentEnd:      currentEnd,
+		CurrentScore:    currentScore,
 		BestStart:       bestStart,
 		BestEnd:         bestEnd,
 		BestEmission:    bestEmission,
+		BestScore:       bestScore,
 		Reduction:       reduction,
 	}, nil
 }
@@ -108,12 +133,15 @@ func (a *App) Suggest(ctx context.Context, in SuggestInput) (SuggestOutput, erro
 	if err := validateDurationWithinLookahead(in.Duration, in.Lookahead); err != nil {
 		return SuggestOutput{}, err
 	}
+	if err := validateWaitCost(in.WaitCost); err != nil {
+		return SuggestOutput{}, err
+	}
 	model, err := normalizeModel(in.Model)
 	if err != nil {
 		return SuggestOutput{}, err
 	}
 
-	analysis, err := a.AnalyzeBestWindow(ctx, in.Zone, in.Duration, in.Lookahead, model)
+	analysis, err := a.AnalyzeBestWindow(ctx, in.Zone, in.Duration, in.Lookahead, model, in.WaitCost)
 	if err != nil {
 		return SuggestOutput{}, err
 	}
@@ -150,4 +178,11 @@ func (a *App) Suggest(ctx context.Context, in SuggestInput) (SuggestOutput, erro
 		ExpectedEmissionKg:     bestEmission,
 		EmissionReductionVsNow: reduction,
 	}, nil
+}
+
+func maxFloat(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
 }

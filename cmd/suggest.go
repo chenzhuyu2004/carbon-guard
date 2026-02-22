@@ -24,6 +24,7 @@ func suggest(args []string) error {
 	duration := fs.Int("duration", 0, "duration in seconds")
 	threshold := fs.Float64("threshold", 0.35, "current CI threshold in kgCO2/kWh")
 	lookahead := fs.Int("lookahead", 6, "forecast lookahead in hours")
+	waitCost := fs.Float64("wait-cost", 0, "waiting penalty in kgCO2 per hour")
 	cacheDirRaw, cacheTTLRaw := addCacheFlags(fs, defaults.CacheDir, defaults.CacheTTL)
 
 	if err := fs.Parse(args); err != nil {
@@ -42,6 +43,9 @@ func suggest(args []string) error {
 	if *lookahead <= 0 {
 		return cgerrors.Newf(cgerrors.InputError, "lookahead must be > 0")
 	}
+	if *waitCost < 0 {
+		return cgerrors.Newf(cgerrors.InputError, "wait-cost must be >= 0")
+	}
 	cacheDir, cacheTTL, err := parseCacheConfig(*cacheDirRaw, *cacheTTLRaw)
 	if err != nil {
 		return cgerrors.New(err, cgerrors.InputError)
@@ -58,6 +62,7 @@ func suggest(args []string) error {
 		Duration:  *duration,
 		Threshold: *threshold,
 		Lookahead: *lookahead,
+		WaitCost:  *waitCost,
 		Model:     defaultModelContext(),
 	})
 	if err != nil {

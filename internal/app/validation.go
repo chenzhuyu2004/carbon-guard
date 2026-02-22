@@ -63,3 +63,10 @@ func validateMaxWait(maxWait time.Duration) error {
 	}
 	return nil
 }
+
+func validateWaitCost(waitCost float64) error {
+	if waitCost < 0 {
+		return fmt.Errorf("%w: wait-cost must be >= 0", ErrInput)
+	}
+	return nil
+}

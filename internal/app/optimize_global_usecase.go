@@ -26,6 +26,9 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 	if err := validateDurationWithinLookahead(in.Duration, in.Lookahead); err != nil {
 		return OptimizeGlobalOutput{}, err
 	}
+	if err := validateWaitCost(in.WaitCost); err != nil {
+		return OptimizeGlobalOutput{}, err
+	}
 	if in.Timeout <= 0 {
 		return OptimizeGlobalOutput{}, fmt.Errorf("%w: timeout must be > 0", ErrInput)
 	}
@@ -106,9 +109,11 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 
 	bestFound := false
 	bestEmission := 0.0
+	bestScore := 0.0
 	bestZone := ""
 	bestStart := time.Time{}
 	worstEmission := 0.0
+	worstScore := 0.0
 	worstFound := false
 
 	for _, start := range timeAxis {
@@ -122,17 +127,21 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 			if !ok {
 				continue
 			}
+			waitHours := maxFloat(start.UTC().Sub(requestStart).Hours(), 0)
+			score := emission + in.WaitCost*waitHours
 
-			if !bestFound || emission < bestEmission {
+			if !bestFound || score < bestScore || (score == bestScore && emission < bestEmission) {
 				bestFound = true
 				bestEmission = emission
+				bestScore = score
 				bestZone = zone
 				bestStart = start
 			}
 
-			if !worstFound || emission > worstEmission {
+			if !worstFound || score > worstScore || (score == worstScore && emission > worstEmission) {
 				worstFound = true
 				worstEmission = emission
+				worstScore = score
 			}
 		}
 	}
@@ -142,8 +151,8 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 	}
 
 	reduction := 0.0
-	if worstFound && worstEmission > 0 {
-		reduction = (worstEmission - bestEmission) / worstEmission * 100
+	if worstFound && worstScore > 0 {
+		reduction = (worstScore - bestScore) / worstScore * 100
 	}
 
 	return OptimizeGlobalOutput{

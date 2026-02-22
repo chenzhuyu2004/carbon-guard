@@ -64,6 +64,7 @@ carbon-guard suggest --zone <ZONE> --duration <seconds> [flags]
 | `--duration` | int | `0` | Yes | Runtime in seconds. |
 | `--threshold` | float | `0.35` | No | Current CI threshold (`kgCO2/kWh`). |
 | `--lookahead` | int | `6` | No | Forecast lookahead in hours. |
+| `--wait-cost` | float | `0` | No | Waiting penalty (`kgCO2/hour`) used in scheduling objective. |
 | `--config` | string | `""` | No | Path to JSON config file for shared defaults. |
 | `--cache-dir` | string | `~/.carbon-guard` | No | Forecast cache directory. |
 | `--cache-ttl` | duration | `10m` | No | Cache TTL (Go duration format). |
@@ -110,6 +111,7 @@ carbon-guard optimize --zones <Z1,Z2,...> --duration <seconds> [flags]
 | `--zones` | string | `""` | Yes | Comma-separated zones, whitespace-safe. |
 | `--duration` | int | `0` | Yes | Runtime in seconds. |
 | `--lookahead` | int | `6` | No | Forecast lookahead in hours. |
+| `--wait-cost` | float | `0` | No | Waiting penalty (`kgCO2/hour`) used in zone ranking objective. |
 | `--config` | string | `""` | No | Path to JSON config file for shared defaults. |
 | `--timeout` | duration | `30s` | No | Command timeout (Go duration). |
 | `--output` | string | `text` | No | `text` or `json`. |
@@ -129,6 +131,10 @@ carbon-guard optimize-global --zones <Z1,Z2,...> --duration <seconds> [flags]
 ### Flags
 
 Same as `optimize`, including `--config`.
+
+When `--wait-cost > 0`, both `optimize` and `optimize-global` minimize:
+
+`score = emission_kg + wait_cost * wait_hours`
 
 ## Exit Codes
 
