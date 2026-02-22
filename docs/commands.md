@@ -43,6 +43,8 @@ carbon-guard run --duration 1200 --live-ci DE --json
 carbon-guard run --duration 300 --budget-kg 0.01 --fail-on-budget
 ```
 
+Text output auto-scales emissions across common units (`mg`, `g`, `kg`, `t`, `kt`, `Mt`, `Gt`) to keep the numeric value readable (target range `[1,1000)`), while still showing a `kgCO2` reference value.
+
 ## `suggest`
 
 Recommend a lower-carbon execution window for one zone.

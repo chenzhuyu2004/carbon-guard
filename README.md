@@ -65,8 +65,8 @@ carbon-guard run --duration 300 --json
 Carbon Report
 -----------------------------------
 Duration: 300s
-Estimated Emissions: 0.0067 kgCO2
-Score: A
+Estimated Emissions: 6.70 gCO2 (0.0067 kgCO2)
+Carbon Score: A
 Equivalent to charging 1 smartphones
 Equivalent to driving an EV 0.1 km
 -----------------------------------
