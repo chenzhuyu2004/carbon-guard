@@ -41,7 +41,6 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 	defer cancel()
 
 	zoneForecasts := make(map[string][]scheduling.ForecastPoint, len(in.Zones))
-	zoneIndexes := make(map[string]map[int64]int, len(in.Zones))
 	errCh := make(chan error, len(in.Zones))
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -67,7 +66,6 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 			normalized := scheduling.NormalizeForecastUTC(forecast)
 			mu.Lock()
 			zoneForecasts[zone] = normalized
-			zoneIndexes[zone] = scheduling.BuildForecastIndex(normalized)
 			mu.Unlock()
 		}()
 	}
@@ -91,9 +89,19 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 		}
 	}
 
-	timeAxis := scheduling.IntersectTimestamps(in.Zones, zoneForecasts)
+	step := scheduling.InferResampleStep(zoneForecasts)
+	timeAxis, alignedForecasts := scheduling.BuildResampledIntersection(in.Zones, zoneForecasts, step)
 	if len(timeAxis) == 0 {
 		return OptimizeGlobalOutput{}, fmt.Errorf("%w: no common timestamps across zones", ErrNoValidWindow)
+	}
+
+	evaluators := make(map[string]scheduling.EmissionEvaluator, len(in.Zones))
+	for _, zone := range in.Zones {
+		evaluator, ok := scheduling.BuildEmissionEvaluator(alignedForecasts[zone], windowEnd)
+		if !ok {
+			continue
+		}
+		evaluators[zone] = evaluator
 	}
 
 	bestFound := false
@@ -105,12 +113,12 @@ func (a *App) OptimizeGlobal(ctx context.Context, in OptimizeGlobalInput) (Optim
 
 	for _, start := range timeAxis {
 		for _, zone := range in.Zones {
-			index, ok := zoneIndexes[zone][start.Unix()]
+			evaluator, ok := evaluators[zone]
 			if !ok {
 				continue
 			}
 
-			emission, ok := scheduling.EstimateWindowEmissions(zoneForecasts[zone][index:], in.Duration, model.Runner, model.Load, model.PUE, windowEnd)
+			emission, ok := evaluator.EstimateAt(start.UTC(), in.Duration, model.Runner, model.Load, model.PUE)
 			if !ok {
 				continue
 			}

@@ -79,3 +79,63 @@ func TestIntersectTimestampsReturnsSortedCommonUTC(t *testing.T) {
 		t.Fatalf("IntersectTimestamps() = %#v, expected %#v", got, want)
 	}
 }
+
+func TestBuildResampledIntersectionAlignsOffsetSeries(t *testing.T) {
+	zones := []string{"DE", "FR"}
+	de := []ForecastPoint{
+		{Timestamp: time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC), CI: 0.4},
+		{Timestamp: time.Date(2026, 1, 1, 11, 0, 0, 0, time.UTC), CI: 0.5},
+		{Timestamp: time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC), CI: 0.6},
+	}
+	fr := []ForecastPoint{
+		{Timestamp: time.Date(2026, 1, 1, 10, 5, 0, 0, time.UTC), CI: 0.3},
+		{Timestamp: time.Date(2026, 1, 1, 11, 5, 0, 0, time.UTC), CI: 0.4},
+		{Timestamp: time.Date(2026, 1, 1, 12, 5, 0, 0, time.UTC), CI: 0.5},
+	}
+
+	timeAxis, aligned := BuildResampledIntersection(
+		zones,
+		map[string][]ForecastPoint{
+			"DE": de,
+			"FR": fr,
+		},
+		time.Hour,
+	)
+
+	wantAxis := []time.Time{
+		time.Date(2026, 1, 1, 11, 0, 0, 0, time.UTC),
+		time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC),
+	}
+	if !reflect.DeepEqual(timeAxis, wantAxis) {
+		t.Fatalf("BuildResampledIntersection() axis = %#v, expected %#v", timeAxis, wantAxis)
+	}
+
+	if len(aligned["DE"]) != 2 || len(aligned["FR"]) != 2 {
+		t.Fatalf("unexpected aligned series lengths: DE=%d FR=%d", len(aligned["DE"]), len(aligned["FR"]))
+	}
+
+	if aligned["DE"][0].CI != 0.5 || aligned["DE"][1].CI != 0.6 {
+		t.Fatalf("unexpected DE resampled CI values: %#v", aligned["DE"])
+	}
+	if aligned["FR"][0].CI != 0.3 || aligned["FR"][1].CI != 0.4 {
+		t.Fatalf("unexpected FR resampled CI values: %#v", aligned["FR"])
+	}
+}
+
+func TestInferResampleStepFromForecastData(t *testing.T) {
+	zoneForecasts := map[string][]ForecastPoint{
+		"DE": {
+			{Timestamp: time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC), CI: 0.4},
+			{Timestamp: time.Date(2026, 1, 1, 11, 0, 0, 0, time.UTC), CI: 0.5},
+		},
+		"FR": {
+			{Timestamp: time.Date(2026, 1, 1, 10, 30, 0, 0, time.UTC), CI: 0.3},
+			{Timestamp: time.Date(2026, 1, 1, 11, 30, 0, 0, time.UTC), CI: 0.4},
+		},
+	}
+
+	got := InferResampleStep(zoneForecasts)
+	if got != time.Hour {
+		t.Fatalf("InferResampleStep() = %s, expected %s", got, time.Hour)
+	}
+}

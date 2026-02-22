@@ -93,3 +93,59 @@ func TestForecastCoverageSecondsUsesTimestampSpacing(t *testing.T) {
 		t.Fatalf("ForecastCoverageSeconds() = %d, expected %d", got, want)
 	}
 }
+
+func TestFindBestWindowAtForecastStartsFindsLowerEmissionWindow(t *testing.T) {
+	points := []ForecastPoint{
+		{Timestamp: time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC), CI: 0.8},
+		{Timestamp: time.Date(2026, 1, 1, 11, 0, 0, 0, time.UTC), CI: 0.2},
+		{Timestamp: time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC), CI: 0.2},
+	}
+	windowEnd := time.Date(2026, 1, 1, 13, 0, 0, 0, time.UTC)
+
+	evaluator, ok := BuildEmissionEvaluator(points, windowEnd)
+	if !ok {
+		t.Fatalf("BuildEmissionEvaluator() expected success")
+	}
+
+	current, best, ok := FindBestWindowAtForecastStarts(points, evaluator, 3600, "ubuntu", 0.6, 1.2)
+	if !ok {
+		t.Fatalf("FindBestWindowAtForecastStarts() expected valid window")
+	}
+
+	if !current.Start.Equal(points[0].Timestamp.UTC()) {
+		t.Fatalf("current window start = %v, expected %v", current.Start, points[0].Timestamp.UTC())
+	}
+	if !best.Start.Equal(points[1].Timestamp.UTC()) {
+		t.Fatalf("best window start = %v, expected %v", best.Start, points[1].Timestamp.UTC())
+	}
+	if !(best.Emission < current.Emission) {
+		t.Fatalf("expected best emission < current emission, got best=%f current=%f", best.Emission, current.Emission)
+	}
+}
+
+func TestEmissionEvaluatorEstimateAtMatchesEstimateWindowEmissions(t *testing.T) {
+	points := []ForecastPoint{
+		{Timestamp: time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC), CI: 0.4},
+		{Timestamp: time.Date(2026, 1, 1, 11, 0, 0, 0, time.UTC), CI: 0.8},
+	}
+	windowEnd := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	evaluator, ok := BuildEmissionEvaluator(points, windowEnd)
+	if !ok {
+		t.Fatalf("BuildEmissionEvaluator() expected success")
+	}
+
+	got, ok := evaluator.EstimateAt(points[0].Timestamp.UTC(), 5400, "ubuntu", 0.5, 1.2)
+	if !ok {
+		t.Fatalf("EmissionEvaluator.EstimateAt() expected success")
+	}
+
+	want, ok := EstimateWindowEmissions(points, 5400, "ubuntu", 0.5, 1.2, windowEnd)
+	if !ok {
+		t.Fatalf("EstimateWindowEmissions() expected success")
+	}
+
+	if math.Abs(got-want) > 1e-9 {
+		t.Fatalf("EmissionEvaluator.EstimateAt() = %.12f, expected %.12f", got, want)
+	}
+}
