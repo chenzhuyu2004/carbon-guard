@@ -15,6 +15,26 @@ type BuildOptions struct {
 	BaselineKg float64
 }
 
+type emissionUnit struct {
+	Symbol   string
+	Multiple float64
+}
+
+var commonEmissionUnits = []emissionUnit{
+	{Symbol: "GtCO2", Multiple: 1e-12},
+	{Symbol: "MtCO2", Multiple: 1e-9},
+	{Symbol: "ktCO2", Multiple: 1e-6},
+	{Symbol: "tCO2", Multiple: 1e-3},
+	{Symbol: "kgCO2", Multiple: 1},
+	{Symbol: "gCO2", Multiple: 1e3},
+	{Symbol: "mgCO2", Multiple: 1e6},
+}
+
+const (
+	autoUnitMinValue = 1.0
+	autoUnitMaxValue = 1000.0
+)
+
 func BuildFromEmissions(durationSeconds int, asJSON bool, emissions float64, opts BuildOptions) string {
 	emissions = round4(emissions)
 	budgetKg := round4(opts.BudgetKg)
@@ -44,12 +64,13 @@ func BuildFromEmissions(durationSeconds int, asJSON bool, emissions float64, opt
 
 	smartphoneCharges, evKilometers := buildComparisons(emissions)
 	score, emoji := carbonScore(emissions, durationSeconds)
+	emissionsLine := formatEmissionDisplay(emissions)
 	report := fmt.Sprintf(
-		"%s\nCarbon Report\n%s\nDuration: %ds\nEstimated Emissions: %.4f kgCO2\nCarbon Score: %s %s\nFun Facts:\n- Equivalent to charging %.2f smartphones\n- Equivalent to driving %.2f km in an EV\n",
+		"%s\nCarbon Report\n%s\nDuration: %ds\nEstimated Emissions: %s\nCarbon Score: %s %s\nFun Facts:\n- Equivalent to charging %.2f smartphones\n- Equivalent to driving %.2f km in an EV\n",
 		divider,
 		divider,
 		durationSeconds,
-		emissions,
+		emissionsLine,
 		score,
 		emoji,
 		smartphoneCharges,
@@ -61,10 +82,10 @@ func BuildFromEmissions(durationSeconds int, asJSON bool, emissions float64, opt
 		if budgetExceeded {
 			status = "budget exceeded"
 		}
-		report += fmt.Sprintf("Budget: %.4f kgCO2 (%s)\n", budgetKg, status)
+		report += fmt.Sprintf("Budget: %s (%s)\n", formatEmissionDisplay(budgetKg), status)
 	}
 	if baselineKg > 0 {
-		report += fmt.Sprintf("Baseline: %.4f kgCO2 (delta: %.2f%%)\n", baselineKg, deltaVsBaselinePct(emissions, baselineKg))
+		report += fmt.Sprintf("Baseline: %s (delta: %.2f%%)\n", formatEmissionDisplay(baselineKg), deltaVsBaselinePct(emissions, baselineKg))
 	}
 
 	return report + divider + "\n"
@@ -116,4 +137,68 @@ func deltaVsBaselinePct(emissionsKg float64, baselineKg float64) float64 {
 		return 0
 	}
 	return (emissionsKg - baselineKg) / baselineKg * 100
+}
+
+func formatEmissionDisplay(emissionsKg float64) string {
+	primary := autoScaledEmission(emissionsKg)
+	kgRef := fmt.Sprintf("%.4f kgCO2", round4(emissionsKg))
+	if primary.Symbol == "kgCO2" {
+		return kgRef
+	}
+	return fmt.Sprintf("%s (%s)", formatScaledEmission(primary.Value, primary.Symbol), kgRef)
+}
+
+func formatScaledEmission(value float64, symbol string) string {
+	abs := math.Abs(value)
+	switch {
+	case abs >= 100:
+		return fmt.Sprintf("%.1f %s", value, symbol)
+	case abs >= 10:
+		return fmt.Sprintf("%.2f %s", value, symbol)
+	case abs >= 1:
+		return fmt.Sprintf("%.2f %s", value, symbol)
+	case abs >= 0.1:
+		return fmt.Sprintf("%.3f %s", value, symbol)
+	default:
+		return fmt.Sprintf("%.4f %s", value, symbol)
+	}
+}
+
+type scaledEmission struct {
+	Value  float64
+	Symbol string
+}
+
+func autoScaledEmission(emissionsKg float64) scaledEmission {
+	if emissionsKg == 0 {
+		return scaledEmission{Value: 0, Symbol: "kgCO2"}
+	}
+
+	absKg := math.Abs(emissionsKg)
+	for _, u := range commonEmissionUnits {
+		v := absKg * u.Multiple
+		if v >= autoUnitMinValue && v < autoUnitMaxValue {
+			return scaledEmission{
+				Value:  signedScaled(emissionsKg, u.Multiple),
+				Symbol: u.Symbol,
+			}
+		}
+	}
+
+	smallest := commonEmissionUnits[len(commonEmissionUnits)-1]
+	largest := commonEmissionUnits[0]
+	if absKg*smallest.Multiple < autoUnitMinValue {
+		return scaledEmission{
+			Value:  signedScaled(emissionsKg, smallest.Multiple),
+			Symbol: smallest.Symbol,
+		}
+	}
+	return scaledEmission{
+		Value:  signedScaled(emissionsKg, largest.Multiple),
+		Symbol: largest.Symbol,
+	}
+}
+
+func signedScaled(kg float64, multiple float64) float64 {
+	return kg * multiple
 }

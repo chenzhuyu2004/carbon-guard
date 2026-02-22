@@ -25,6 +25,7 @@ All notable changes to this project are documented in this file.
 
 - Action runtime input contract now prefers explicit `duration` or `start_time`.
 - `.gitignore` expanded for build, coverage, logs, and editor artifacts.
+- Text report emission display now auto-scales across common units for readability while preserving `kgCO2` reference values.
 
 ### Fixed
 
