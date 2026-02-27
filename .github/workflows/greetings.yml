@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: First interaction greeting
-        uses: actions/first-interaction@2d4393e6bc0e2efb2e48fba7e06819c3bf61ffc9
+        uses: actions/first-interaction@1c4688942c71f71d4f5502a26ea67c331730fa4d
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           issue_message: "Thanks for opening your first issue in Carbon Guard. Please make sure you used the issue template and included reproducible details."
